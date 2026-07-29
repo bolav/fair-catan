@@ -1,0 +1,494 @@
+/*
+ * Tokens follow the data-viz reference palette. Dark values are declared under
+ * both the media query (OS setting) and the [data-theme] scope (in-app toggle),
+ * so the toggle wins either way.
+ *
+ * Player colours are the validated 4-slot categorical set
+ * blue / amber / pink / green — it clears every hard gate on the all-pairs
+ * pairlist in both modes. On dark, amber vs green sits in the 6-8 CVD warn band,
+ * so player identity is *also* carried by the numeral inside every settlement
+ * marker, by the legend, and by the breakdown table. Amber and pink fall below
+ * 3:1 on the light surface, which is why every player mark ships a visible
+ * label and the table view is always on screen.
+ */
+
+:root {
+  color-scheme: light;
+
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+
+  --accent: #2a78d6;
+  --good: #0ca30c;
+  --warning: #fab219;
+  --serious: #ec835a;
+  --critical: #d03b3b;
+
+  --player-1: #2a78d6;
+  --player-2: #eda100;
+  --player-3: #e87ba4;
+  --player-4: #008300;
+
+  --terrain-wood: #2e7d3d;
+  --terrain-brick: #c05a2b;
+  --terrain-sheep: #9dc44d;
+  --terrain-wheat: #e0a521;
+  --terrain-ore: #4f80b8;
+  --terrain-desert: #d9cfae;
+
+  --sea: #e4eef4;
+  --sea-line: #b9d0dd;
+  --token: #f6f3e9;
+
+  --radius: 10px;
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    color-scheme: dark;
+
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.1);
+
+    --accent: #3987e5;
+
+    --player-1: #3987e5;
+    --player-2: #c98500;
+    --player-3: #d55181;
+    --player-4: #008300;
+
+    --terrain-wood: #3d9a4d;
+    --terrain-brick: #c2602f;
+    --terrain-sheep: #93bb47;
+    --terrain-wheat: #c78f14;
+    --terrain-ore: #5d90c8;
+    --terrain-desert: #8a7f60;
+
+    --sea: #16232b;
+    --sea-line: #2f4652;
+    --token: #ece7d6;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --surface-1: #1a1a19;
+  --page: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --gridline: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.1);
+
+  --accent: #3987e5;
+
+  --player-1: #3987e5;
+  --player-2: #c98500;
+  --player-3: #d55181;
+  --player-4: #008300;
+
+  --terrain-wood: #3d9a4d;
+  --terrain-brick: #c2602f;
+  --terrain-sheep: #93bb47;
+  --terrain-wheat: #c78f14;
+  --terrain-ore: #5d90c8;
+  --terrain-desert: #8a7f60;
+
+  --sea: #16232b;
+  --sea-line: #2f4652;
+  --token: #ece7d6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.app {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+/* --- header & controls --------------------------------------------------- */
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  margin: 0 0 20px;
+  max-width: 70ch;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 14px 16px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+input,
+select,
+button {
+  font: inherit;
+  color: inherit;
+  border-radius: 8px;
+  border: 1px solid var(--baseline);
+  background: var(--surface-1);
+  padding: 6px 10px;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.progress {
+  flex: 1 1 200px;
+  min-width: 160px;
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 4px;
+  background: color-mix(in oklab, var(--accent) 18%, var(--surface-1));
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* --- layout -------------------------------------------------------------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1000px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 0 0 4px;
+}
+
+.card p.note {
+  margin: 0 0 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* --- board --------------------------------------------------------------- */
+
+.board svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.swatch.round {
+  border-radius: 50%;
+}
+
+/* --- hero + meters ------------------------------------------------------- */
+
+.hero {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 2px;
+}
+
+.hero-value {
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.hero-caption {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.meters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.meter-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.meter-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.meter-track {
+  height: 10px;
+  border-radius: 5px;
+  background: color-mix(in oklab, var(--meter) 18%, var(--surface-1));
+  overflow: hidden;
+}
+
+.meter-fill {
+  height: 100%;
+  background: var(--meter);
+  border-radius: 0 4px 4px 0;
+  min-width: 2px;
+}
+
+.meter.total .meter-label {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* --- player totals bar chart --------------------------------------------- */
+
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+}
+
+.bar-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.bar-track {
+  height: 18px;
+  background: var(--gridline);
+  border-radius: 0 4px 4px 0;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+  min-width: 2px;
+}
+
+.bar-value {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--text-primary);
+}
+
+.spread-note {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0 0 16px;
+}
+
+/* --- tables -------------------------------------------------------------- */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+  text-align: right;
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--gridline);
+  white-space: nowrap;
+}
+
+th:first-child,
+td:first-child {
+  text-align: left;
+}
+
+thead th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+td.total {
+  font-weight: 600;
+}
+
+.player-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+/* --- setup sheet --------------------------------------------------------- */
+
+.sheet ol {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.sheet li {
+  margin-bottom: 3px;
+}
+
+.sheet code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: color-mix(in oklab, var(--text-primary) 7%, var(--surface-1));
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.row-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}

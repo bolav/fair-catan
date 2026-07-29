@@ -1,0 +1,7 @@
+# node_modules is baked into the container image and the network is firewalled,
+# so pnpm must never try to "repair" the install before running a script — its
+# default behaviour here is to purge node_modules, which cannot be rebuilt.
+verifyDepsBeforeRun: false
+
+allowBuilds:
+  esbuild: true
