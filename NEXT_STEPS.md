@@ -88,13 +88,7 @@ README for links to the originals.
    round the island, so any previously recorded distributions are stale — rerun
    `pnpm calibrate` before comparing.
 
-2. **Confirm the harbour *local* offsets on the physical frame.** The user has
-   settled where a piece starts on the coast, but not where its harbours sit
-   within it: `FRAME_PIECES` still assumes `{0, 3}` on a 2-harbour piece and
-   `{2}` on a 1-harbour piece, read off the photo. This only perturbs
-   non-alternating piece orders. See `TODO.md` §3.1.
-
-3. **`TODO.md` §6 nice-to-haves**, in the order listed there: seed
+2. **`TODO.md` §6 nice-to-haves**, in the order listed there: seed
    import/export as a short string, sliders for the resource relative values,
    and a step-by-step draft animation.
 
@@ -108,7 +102,6 @@ Each is a single exported constant, so each is a one-line change.
 |---|---|---|
 | Harbour multipliers take the max, not the product (x1.4, never x1.54) | `src/scoring.ts` | articles are silent; max is the conservative reading |
 | Robber tax is half the raw pips of the highest-paying hex, applied from the second settlement on | `src/scoring.ts` | `ROBBER_TAX_FRACTION` |
-| Within a 2-harbour piece the 3:1 sits at local edge 0, the 2:1 at local edge 3 | `src/board.ts` | from the left-to-right reading of `TODO.md` §3.1's table |
 | Normalising divisors are attainable maxima, not 100M-run maxima | `src/fairness.ts` | two of four reproduce the articles' stated values exactly |
 | A setup road is worth the best site it reaches, judged at that pick | `src/placement.ts` | `chooseRoad`; roads are not in either article and do not feed CIBI+ |
 
@@ -119,6 +112,9 @@ Resolved:
 - A frame piece starts on an *inner* coastal node, not an outer one —
   `PIECE_START_OFFSET = -1` in `src/board.ts`. Confirmed against the user's
   physical pieces and independently against the sea frame photo.
+- The harbour local offsets within a piece — `{0, 3}` on a 2-harbour piece,
+  centre `{2}` on a 1-harbour piece. Confirmed by the user. With the two above,
+  the whole sea-frame model is now confirmed rather than assumed.
 
 ---
 

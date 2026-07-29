@@ -152,12 +152,27 @@ export function harbourAnchors(
   })
 }
 
+/**
+ * Which parts of the simulated opening to draw. They are display-only: the
+ * draft always runs, because the fairness half of CIBI+ is derived from it.
+ * Turning them off gives you the bare board to set up however you like.
+ */
+export interface ShowLayers {
+  settlements: boolean
+  roads: boolean
+  /** The ring marking the settlement that deals cards at setup. */
+  payout: boolean
+}
+
+export const SHOW_ALL: ShowLayers = { settlements: true, roads: true, payout: true }
+
 export interface BoardViewProps {
   board: Board
   draft: DraftResult
+  show?: ShowLayers
 }
 
-export function BoardView({ board, draft }: BoardViewProps) {
+export function BoardView({ board, draft, show = SHOW_ALL }: BoardViewProps) {
   const geom = geometry()
 
   const ringNodes = geom.coastalRingNodes.map((id) => geom.nodes[id])
@@ -249,7 +264,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
         terrain names are set — so they go down before the names and tokens,
         and read as being on the board rather than over the labelling.
       */}
-      {draft.roads.map((road) => {
+      {(show.roads ? draft.roads : []).map((road) => {
         const a = scale(geom.nodes[road.from])
         const b = scale(geom.nodes[road.to])
         const at = (t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
@@ -381,9 +396,9 @@ export function BoardView({ board, draft }: BoardViewProps) {
       })}
 
       {/* Starting settlements, numbered so identity never rests on colour. */}
-      {draft.placements.map((placement) => {
+      {(show.settlements ? draft.placements : []).map((placement) => {
         const p = scale(geom.nodes[placement.node])
-        const pays = draft.openingHands.some((h) => h.node === placement.node)
+        const pays = show.payout && draft.openingHands.some((h) => h.node === placement.node)
         return (
           <g key={placement.pick}>
             {/* A second ring marks the settlement that pays out at setup. */}

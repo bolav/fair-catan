@@ -13,6 +13,23 @@ const DEFAULT_BOARDS = 20_000
 
 type Theme = 'system' | 'light' | 'dark'
 
+/**
+ * The drafted opening is drawn over the board, but it is only a suggestion —
+ * these turn each layer off for anyone who wants the bare island. The draft
+ * still runs either way, because CIBI+'s fairness half is derived from it.
+ */
+interface Layers {
+  settlements: boolean
+  roads: boolean
+  cards: boolean
+}
+
+const LAYER_LABELS: Array<{ key: keyof Layers; label: string }> = [
+  { key: 'settlements', label: 'Settlements' },
+  { key: 'roads', label: 'Roads' },
+  { key: 'cards', label: 'Opening cards' },
+]
+
 interface Shown {
   evaluation: BoardEvaluation
   boardSeed: number
@@ -24,6 +41,7 @@ export default function App() {
   const [boards, setBoards] = useState(DEFAULT_BOARDS)
   const [mode, setMode] = useState<SweepMode>('best')
   const [theme, setTheme] = useState<Theme>('system')
+  const [layers, setLayers] = useState<Layers>({ settlements: true, roads: true, cards: true })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [shown, setShown] = useState<Shown>(() => {
@@ -100,8 +118,9 @@ export default function App() {
       <p className="subtitle">
         Boards are scored with CIBI+: four balance measures averaged with a fairness measure taken
         from a simulated 1-2-3-4-4-3-2-1 opening draft. The eight settlements that fairness is
-        derived from are drawn on the board, and the harbours come from a real six-piece sea frame,
-        so anything generated here can be built on the table.
+        derived from can be drawn on the board along with their roads and opening cards, and the
+        harbours come from a real six-piece sea frame, so anything generated here can be built on
+        the table.
       </p>
 
       <div className="controls">
@@ -137,6 +156,19 @@ export default function App() {
         <button onClick={() => showSeed(Math.floor(Math.random() * 0x100000000) >>> 0)} disabled={running}>
           Single random board
         </button>
+        <fieldset className="layers">
+          <legend>Show</legend>
+          {LAYER_LABELS.map(({ key, label }) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={layers[key]}
+                onChange={(e) => setLayers((l) => ({ ...l, [key]: e.target.checked }))}
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
         {running && (
           <div className="progress">
             <div className="progress-track">
@@ -157,21 +189,32 @@ export default function App() {
         <div>
           <section className="card board">
             <h2>The island</h2>
-            <BoardView board={evaluation.board} draft={evaluation.draft} />
+            <BoardView
+              board={evaluation.board}
+              draft={evaluation.draft}
+              show={{
+                settlements: layers.settlements,
+                roads: layers.roads,
+                payout: layers.cards,
+              }}
+            />
             <div className="legend">
-              {evaluation.draft.totals.map((_, player) => (
-                <span className="legend-item" key={player}>
-                  <span
-                    className="swatch round"
-                    style={{ background: `var(--player-${player + 1})` }}
-                  />
-                  Player {player + 1}
+              {(layers.settlements || layers.roads) &&
+                evaluation.draft.totals.map((_, player) => (
+                  <span className="legend-item" key={player}>
+                    <span
+                      className="swatch round"
+                      style={{ background: `var(--player-${player + 1})` }}
+                    />
+                    Player {player + 1}
+                  </span>
+                ))}
+              {layers.settlements && layers.cards && (
+                <span className="legend-item">
+                  <span className="swatch round ringed" />
+                  Pays out at setup
                 </span>
-              ))}
-              <span className="legend-item">
-                <span className="swatch round ringed" />
-                Pays out at setup
-              </span>
+              )}
               <span className="legend-item">A–F — sea frame pieces, clockwise from the top left</span>
             </div>
           </section>
@@ -179,7 +222,12 @@ export default function App() {
         </div>
         <div>
           <CibiPanel evaluation={evaluation} />
-          <SetupSheet board={evaluation.board} draft={evaluation.draft} seed={boardSeed} />
+          <SetupSheet
+            board={evaluation.board}
+            draft={evaluation.draft}
+            seed={boardSeed}
+            show={layers}
+          />
         </div>
       </div>
     </div>

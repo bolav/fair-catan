@@ -132,6 +132,80 @@ test.describe('the board', () => {
   })
 })
 
+test.describe('the Show toggles', () => {
+  const settlements = '.board svg [data-role="settlement"]'
+  const roads = '.board svg [data-role="road"]'
+  const payout = '.board svg [data-role="payout"]'
+
+  test('everything is on to begin with', async ({ page }) => {
+    await board(page)
+    await expect(page.locator(settlements)).toHaveCount(8)
+    await expect(page.locator(roads)).toHaveCount(8)
+    await expect(page.locator(payout)).toHaveCount(4)
+  })
+
+  test('each one only turns off its own layer', async ({ page }) => {
+    await board(page)
+
+    await page.getByLabel('Roads', { exact: true }).uncheck()
+    await expect(page.locator(roads)).toHaveCount(0)
+    await expect(page.locator(settlements)).toHaveCount(8)
+    await expect(page.locator(payout)).toHaveCount(4)
+    await page.getByLabel('Roads', { exact: true }).check()
+
+    // The ring means "this settlement deals the cards", so it goes with them.
+    await page.getByLabel('Opening cards', { exact: true }).uncheck()
+    await expect(page.locator(payout)).toHaveCount(0)
+    await expect(page.locator(settlements)).toHaveCount(8)
+    await expect(page.locator(roads)).toHaveCount(8)
+    await page.getByLabel('Opening cards', { exact: true }).check()
+
+    await page.getByLabel('Settlements', { exact: true }).uncheck()
+    await expect(page.locator(settlements)).toHaveCount(0)
+    await expect(page.locator(payout)).toHaveCount(0)
+    await expect(page.locator(roads)).toHaveCount(8)
+  })
+
+  test('leaves a bare island with all three off', async ({ page }) => {
+    await board(page)
+    for (const label of ['Settlements', 'Roads', 'Opening cards']) {
+      await page.getByLabel(label, { exact: true }).uncheck()
+    }
+    await expect(page.locator(settlements)).toHaveCount(0)
+    await expect(page.locator(roads)).toHaveCount(0)
+    await expect(page.locator(payout)).toHaveCount(0)
+
+    // The board itself is untouched.
+    await expect(page.locator('.board svg [data-role="terrain"]')).toHaveCount(19)
+    await expect(page.locator('.board svg [data-role="harbour"]')).toHaveCount(9)
+
+    // And so is the scoring, which is derived from the draft either way.
+    await expect(page.getByText('Spread', { exact: false })).toBeVisible()
+    await expect(page.locator('.hero-value')).toHaveText('0.214')
+  })
+
+  test('drops the matching sections of the setup sheet', async ({ page }) => {
+    await board(page)
+    const sheet = page.locator('.sheet')
+    await expect(sheet).toContainText('settles')
+    await expect(sheet).toContainText('road towards')
+    await expect(sheet).toContainText('deal these cards')
+
+    await page.getByLabel('Roads', { exact: true }).uncheck()
+    await expect(sheet).not.toContainText('road towards')
+    await expect(sheet).toContainText('settles')
+
+    await page.getByLabel('Opening cards', { exact: true }).uncheck()
+    await expect(sheet).not.toContainText('deal these cards')
+
+    await page.getByLabel('Settlements', { exact: true }).uncheck()
+    await expect(sheet).not.toContainText('settles')
+    // The board build instructions always stay.
+    await expect(sheet).toContainText('Build the sea frame first')
+    await expect(sheet).toContainText('reproduces this exact board')
+  })
+})
+
 for (const theme of THEMES) {
   test.describe(`${theme} mode`, () => {
     test.use({ colorScheme: theme })

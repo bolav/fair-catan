@@ -241,10 +241,9 @@ a divisor of 13, which is impossible — 13 would put most boards far above 1.0.
      mirror image). This rotates all nine harbours one coastal edge round the
      island, so it changes scoring; it leaves the 3-4-3 gap pattern alone,
      which is why the gap check alone could never have caught it.
-   - The *local* edge index of each harbour within its piece (`{0,3}` on a
-     2-harbour piece, centre `{2}` on a 1-harbour piece) is relative to the
-     piece itself, so the offset above does not disturb it. Still read off the
-     photo rather than confirmed on the table.
+   - ✔ **Local edge index of each harbour — confirmed by the user.** `{0, 3}`
+     on a 2-harbour piece, centre `{2}` on a 1-harbour piece. This is relative
+     to the piece itself, so the start offset above does not disturb it.
 2. **Robber tax detail — implemented as read.** "highest paying hexagon" is the
    single adjacent hex with the largest expected card return across the player's
    settlements; the tax is half its raw pips, applied once the player holds two
@@ -254,11 +253,11 @@ a divisor of 13, which is impossible — 13 would put most boards far above 1.0.
    3:1 and a 2:1 for the same resource gets ×1.4, not ×1.54. The articles do not
    say; taking the max is the conservative reading. One exported constant each,
    so this is a one-line change.
-5. **Order within a 2-harbour frame piece — assumed.** §3.1's table lists each
-   pair as "3:1 + resource 2:1"; that listed order is taken as left-to-right, so
-   the 3:1 sits at local edge 0 and the 2:1 at local edge 3. Unlike the piece
-   start offset, which the user has now settled, this one is still read off the
-   photo. It only matters for non-alternating piece orders.
+5. **Order within a 2-harbour frame piece — ✔ confirmed by the user.** §3.1's
+   table lists each pair as "3:1 + resource 2:1", read left-to-right, so the
+   3:1 sits at local edge 0 and the 2:1 at local edge 3; 1-harbour pieces carry
+   theirs centred at local edge 2. Together with `PIECE_START_OFFSET` this
+   makes the whole frame model confirmed rather than assumed.
 6. **Setup roads — a heuristic, not from the articles.** Neither article covers
    roads; the app places one per settlement because you cannot set a board up
    without them. A setup road is treated as an option on a future settlement

@@ -213,6 +213,39 @@ button:disabled {
   cursor: default;
 }
 
+.layers {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 2px 12px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.layers legend {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 0 4px;
+}
+
+.layers label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.layers input {
+  accent-color: var(--accent);
+  margin: 0;
+  padding: 0;
+  width: 14px;
+  height: 14px;
+}
+
 .progress {
   flex: 1 1 200px;
   min-width: 160px;
