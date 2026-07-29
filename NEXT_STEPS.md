@@ -34,7 +34,10 @@ pnpm geometry-check                             # board graph invariants
 pnpm render-check [seed]                        # server-renders the board, checks it numerically
 node scripts/shoot.mjs [outDir]                 # light/dark screenshots at 1440 and 900
 node scripts/zoom.mjs [outDir] [url] [theme]    # high-DPI crops of the board SVG
+node scripts/screenshot.mjs [out] [url] [theme] # regenerates the README image
 ```
+
+The three scripts above need a dev server running.
 
 **The UI has now been looked at.** Chromium turned out to be installed at
 `/opt/ms-playwright`, so the visual pass finally happened. What it found, and
