@@ -270,6 +270,32 @@ export interface FramePiece {
 export const EDGES_PER_PIECE = 5
 
 /**
+ * Which coastal ring edge a frame piece starts on, relative to `slot * 5`.
+ *
+ * The coastal ring is walked clockwise from the island's topmost-then-leftmost
+ * node, which is a node the land pushes *out* to. A run of six consecutive
+ * coastal edges shares one straight midline, and a five-edge piece can be cut
+ * out of that run in two ways — starting on the outer node or one step earlier
+ * on the inner one. Both give a straight bar, so the geometry alone does not
+ * decide it.
+ *
+ * The user's physical pieces do: read from the left, a piece's inner profile
+ * runs low, high, low, high, low, high. That is the -1 cut. (TODO §3.1, the
+ * question NEXT_STEPS step 3 was holding open.)
+ */
+export const PIECE_START_OFFSET = -1
+
+/** The coastal ring edge carrying local edge `local` of the piece in `slot`. */
+export function pieceEdgeSlot(slot: number, local: number, ringLength: number): number {
+  return (slot * EDGES_PER_PIECE + local + PIECE_START_OFFSET + ringLength) % ringLength
+}
+
+/** The inverse: which frame slot covers a given coastal ring edge. */
+export function slotForEdge(edge: number, ringLength: number): number {
+  return Math.floor(((edge - PIECE_START_OFFSET + ringLength) % ringLength) / EDGES_PER_PIECE)
+}
+
+/**
  * The user's actual frame, read off the sea frame photo. All six pieces share
  * the same notch/tab profile, so any piece fits any of the 6 ring slots.
  * Two-harbour pieces carry their harbours 3 edges apart at local {0, 3};
@@ -322,7 +348,7 @@ export function harboursFor(order: FramePiece[], geom: Geometry = geometry()): H
   const harbours: Harbour[] = []
   order.forEach((piece, slotIndex) => {
     for (const h of piece.harbours) {
-      const slot = slotIndex * EDGES_PER_PIECE + h.local
+      const slot = pieceEdgeSlot(slotIndex, h.local, geom.coastalRing.length)
       const edgeId = geom.coastalRing[slot]
       harbours.push({
         kind: h.kind,

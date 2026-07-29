@@ -11,6 +11,7 @@ import {
   makeRng,
   noAdjacentReds,
   NUMBER_POOL,
+  pieceEdgeSlot,
   standardFrame,
   TILE_POOL,
   TOTAL_PIPS,
@@ -120,7 +121,58 @@ describe('the sea frame', () => {
     const slots = harboursFor(standardFrame())
       .map((h) => h.slot)
       .sort((a, b) => a - b)
-    expect(slots).toEqual([0, 3, 7, 10, 13, 17, 20, 23, 27])
+    // The gaps, not the absolute slots, are what the physical board fixes:
+    // PIECE_START_OFFSET rotates the whole set around the coast without
+    // changing the spacing.
+    const gaps = slots.map((s, i) => (i === 0 ? 30 + s - slots[slots.length - 1] : s - slots[i - 1]))
+    expect(gaps.reduce((a, b) => a + b)).toBe(30)
+    expect(gaps.sort((a, b) => a - b)).toEqual([3, 3, 3, 3, 3, 3, 4, 4, 4])
+    expect(slots).toEqual([2, 6, 9, 12, 16, 19, 22, 26, 29])
+  })
+
+  it('cuts every piece out of the coast as a straight bar', () => {
+    // A piece's five coastal edges share one midline; that is what makes it a
+    // straight bar with a zigzag inner edge. PIECE_START_OFFSET has to keep it.
+    const geom = geometry()
+    const ring = geom.coastalRingNodes.map((id) => geom.nodes[id])
+    for (let slot = 0; slot < 6; slot++) {
+      const mids = Array.from({ length: EDGES_PER_PIECE }, (_, k) => {
+        const e = pieceEdgeSlot(slot, k, ring.length)
+        const a = ring[e]
+        const b = ring[(e + 1) % ring.length]
+        return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      })
+      const run = { x: mids[4].x - mids[0].x, y: mids[4].y - mids[0].y }
+      const len = Math.hypot(run.x, run.y)
+      const normal = { x: -run.y / len, y: run.x / len }
+      const depths = mids.map((m) => Math.abs(m.x * normal.x + m.y * normal.y))
+      for (const d of depths) expect(d).toBeCloseTo(depths[0], 9)
+    }
+  })
+
+  it('starts each piece on an inner coastal node, as the physical pieces do', () => {
+    // Read from the left, a real piece's profile is low, high, low, high,
+    // low, high — so its first node is a low one. Depth is measured along the
+    // piece's own outward normal; every coastal node is the same distance from
+    // the board centre, so radius cannot tell the two apart. See
+    // PIECE_START_OFFSET.
+    const geom = geometry()
+    const ring = geom.coastalRingNodes.map((id) => geom.nodes[id])
+    for (let slot = 0; slot < 6; slot++) {
+      const at = (k: number) => ring[pieceEdgeSlot(slot, k, ring.length)]
+      const run = { x: at(4).x - at(0).x, y: at(4).y - at(0).y }
+      const len = Math.hypot(run.x, run.y)
+      let normal = { x: -run.y / len, y: run.x / len }
+      if (at(0).x * normal.x + at(0).y * normal.y < 0) normal = { x: -normal.x, y: -normal.y }
+
+      const depth = (k: number) => at(k).x * normal.x + at(k).y * normal.y
+      const profile = Array.from({ length: 6 }, (_, k) => depth(k))
+      const high = Math.max(...profile)
+      const low = Math.min(...profile)
+      expect(high).toBeGreaterThan(low)
+      const mid = (high + low) / 2
+      expect(profile.map((d) => d > mid)).toEqual([false, true, false, true, false, true])
+    }
   })
 
   it('never lets one settlement position touch two harbours, for any arrangement', () => {

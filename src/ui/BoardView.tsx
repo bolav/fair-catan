@@ -4,12 +4,33 @@
 // token, every harbour its ratio and resource, and every settlement the number
 // of the player who took it — so nothing here is identified by colour alone.
 
-import { geometry, pips, type Board, type HarbourKind, type Resource } from '../board'
+import {
+  EDGES_PER_PIECE,
+  geometry,
+  pieceEdgeSlot,
+  pips,
+  slotForEdge,
+  type Board,
+  type HarbourKind,
+  type Resource,
+} from '../board'
 import type { DraftResult } from '../placement'
 
 const S = 46 // px per hex circumradius
-const SEA = 1.0 // width of the sea frame, in the same units
-const MARGIN = 36 // px of extra room for the frame-piece letters
+/**
+ * Width of the sea frame, measured outwards from the island's inscribed
+ * hexagon (the line the coastline's outermost nodes sit on). The frame has to
+ * be wide enough for a harbour marker to sit clear of both the coast and the
+ * frame's outer edge — see HARBOUR_W/H below.
+ */
+const SEA = 1.25
+const MARGIN = 10 // px of slack, over and above the frame-piece letters
+const LETTER_GAP = 0.3 // frame-piece letters, this far outside the frame
+const LETTER_SIZE = 15
+
+const HARBOUR_W = 50
+const HARBOUR_H = 20
+const HARBOUR_TEXT = 9.5
 
 const TERRAIN: Record<Resource, string> = {
   wood: 'var(--terrain-wood)',
@@ -46,6 +67,54 @@ function unit(p: Point): Point {
   return { x: p.x / len, y: p.y / len }
 }
 
+const dot = (a: Point, b: Point) => a.x * b.x + a.y * b.y
+const mix = (a: Point, b: Point): Point => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+const along = (p: Point, n: Point, d: number): Point => ({ x: p.x + n.x * d, y: p.y + n.y * d })
+
+/**
+ * One straight frame piece: the outward normal of its outer edge, and the
+ * signed distance from the board centre to that edge.
+ */
+interface Side {
+  normal: Point
+  distance: number
+  /** Midpoint of the piece's middle coastal edge — its tangential centre. */
+  centre: Point
+}
+
+/**
+ * The physical frame is six straight bars whose inner edge is a five-notch
+ * zigzag and whose outer edge is one side of a regular hexagon. Each piece's
+ * five coastal edge midpoints are collinear, so that line gives the piece its
+ * direction; the outer edge is parallel to it, SEA beyond the furthest point
+ * of the whole coastline. Adjacent outer edges meet at the hexagon's corners.
+ */
+function frameSides(ring: Point[]): Side[] {
+  const sides: Side[] = []
+  for (let piece = 0; piece < 6; piece++) {
+    const mids = Array.from({ length: EDGES_PER_PIECE }, (_, k) => {
+      const edge = pieceEdgeSlot(piece, k, ring.length)
+      return mix(ring[edge], ring[(edge + 1) % ring.length])
+    })
+    const run = { x: mids[mids.length - 1].x - mids[0].x, y: mids[mids.length - 1].y - mids[0].y }
+    let normal = unit({ x: -run.y, y: run.x })
+    if (dot(normal, mids[0]) < 0) normal = { x: -normal.x, y: -normal.y }
+    // The coastline's outermost node on this axis is what the frame must clear.
+    const reach = Math.max(...ring.map((n) => dot(n, normal)))
+    sides.push({ normal, distance: reach + SEA, centre: mids[(EDGES_PER_PIECE - 1) / 2] })
+  }
+  return sides
+}
+
+/** Where two frame edges meet — a corner of the hexagon. */
+function meet(a: Side, b: Side): Point {
+  const det = a.normal.x * b.normal.y - a.normal.y * b.normal.x
+  return {
+    x: (b.normal.y * a.distance - a.normal.y * b.distance) / det,
+    y: (a.normal.x * b.distance - b.normal.x * a.distance) / det,
+  }
+}
+
 /** Outlined text stays legible on any terrain fill. */
 const outline = {
   paintOrder: 'stroke' as const,
@@ -64,17 +133,27 @@ export function BoardView({ board, draft }: BoardViewProps) {
 
   const ringNodes = geom.coastalRingNodes.map((id) => geom.nodes[id])
   const inner = ringNodes.map((n) => scale(n))
-  const outer = ringNodes.map((n) => {
-    const d = unit(n)
-    return scale({ x: n.x + d.x * SEA, y: n.y + d.y * SEA })
-  })
 
-  const xs = outer.map((p) => p.x)
-  const ys = outer.map((p) => p.y)
-  const minX = Math.min(...xs) - MARGIN
-  const minY = Math.min(...ys) - MARGIN
-  const width = Math.max(...xs) + MARGIN - minX
-  const height = Math.max(...ys) + MARGIN - minY
+  const sides = frameSides(ringNodes)
+  // Corner `p` is where piece p-1 meets piece p, i.e. the outer end of the
+  // seam at ring node p*5.
+  const corners = sides.map((side, p) => meet(sides[(p + 5) % 6], side))
+  const outer = corners.map(scale)
+
+  // A piece's letter sits outside the middle of its outer edge, which on the
+  // flat-topped sides reaches past the hexagon's corners — so the letters, not
+  // the corners, can set the bounding box.
+  const letters = sides.map((side) =>
+    scale(along(side.centre, side.normal, side.distance - dot(side.centre, side.normal) + LETTER_GAP)),
+  )
+
+  const pad = LETTER_SIZE / 2 + MARGIN
+  const xs = [...outer.map((p) => p.x - MARGIN), ...letters.map((p) => p.x - pad)]
+  const ys = [...outer.map((p) => p.y - MARGIN), ...letters.map((p) => p.y - pad)]
+  const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
+  const width = Math.max(...outer.map((p) => p.x + MARGIN), ...letters.map((p) => p.x + pad)) - minX
+  const height = Math.max(...outer.map((p) => p.y + MARGIN), ...letters.map((p) => p.y + pad)) - minY
 
   const path = (points: Point[]) =>
     points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ') + ' Z'
@@ -86,14 +165,9 @@ export function BoardView({ board, draft }: BoardViewProps) {
 
       {/* Frame piece seams and letters. */}
       {board.frame.map((piece, slot) => {
-        const seamIn = inner[slot * 5]
-        const seamOut = outer[slot * 5]
-        const midIndex = slot * 5 + 2
-        const a = ringNodes[midIndex]
-        const b = ringNodes[(midIndex + 1) % ringNodes.length]
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-        const d = unit(mid)
-        const label = scale({ x: mid.x + d.x * (SEA + 0.42), y: mid.y + d.y * (SEA + 0.42) })
+        const seamIn = inner[pieceEdgeSlot(slot, 0, inner.length)]
+        const seamOut = outer[slot]
+        const label = letters[slot]
         return (
           <g key={piece.id}>
             <line
@@ -109,7 +183,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
               y={label.y}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={15}
+              fontSize={LETTER_SIZE}
               fontWeight={600}
               fill="var(--text-secondary)"
             >
@@ -183,9 +257,14 @@ export function BoardView({ board, draft }: BoardViewProps) {
       {/* Harbours, drawn in the sea band with a dock line to each usable corner. */}
       {board.harbours.map((harbour) => {
         const [a, b] = harbour.nodes.map((id) => scale(geom.nodes[id]))
-        const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-        const d = unit(mid)
-        const at = { x: mid.x + d.x * SEA * S * 0.55, y: mid.y + d.y * SEA * S * 0.55 }
+        // Sit the marker on its own piece's normal, halfway between the
+        // coastline's furthest reach and the frame's outer edge, so it clears
+        // both whatever angle the piece is at.
+        const side = sides[slotForEdge(harbour.slot, ringNodes.length)]
+        const mid = mix(geom.nodes[harbour.nodes[0]], geom.nodes[harbour.nodes[1]])
+        const at = scale(
+          along(mid, side.normal, side.distance - SEA / 2 - dot(mid, side.normal)),
+        )
         const fill = harbour.kind === 'generic' ? 'var(--token)' : TERRAIN[harbour.kind]
         const ink = harbour.kind === 'generic' || harbour.kind === 'sheep' || harbour.kind === 'wheat'
         return (
@@ -193,10 +272,10 @@ export function BoardView({ board, draft }: BoardViewProps) {
             <line x1={at.x} y1={at.y} x2={a.x} y2={a.y} stroke="var(--sea-line)" strokeWidth={2} />
             <line x1={at.x} y1={at.y} x2={b.x} y2={b.y} stroke="var(--sea-line)" strokeWidth={2} />
             <rect
-              x={at.x - 27}
-              y={at.y - 11}
-              width={54}
-              height={22}
+              x={at.x - HARBOUR_W / 2}
+              y={at.y - HARBOUR_H / 2}
+              width={HARBOUR_W}
+              height={HARBOUR_H}
               rx={6}
               fill={fill}
               stroke="var(--surface-1)"
@@ -207,7 +286,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
               y={at.y}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize={10}
+              fontSize={HARBOUR_TEXT}
               fontWeight={600}
               fill={ink ? '#0b0b0b' : '#ffffff'}
             >
