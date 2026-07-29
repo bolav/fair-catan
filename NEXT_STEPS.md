@@ -20,7 +20,7 @@ Verify in one go:
 ```
 pnpm exec tsc -b     # clean
 pnpm test            # 54 passing
-pnpm test:e2e        # 19 passing, needs Chromium
+pnpm test:e2e        # 24 passing, needs Chromium
 pnpm build           # clean
 pnpm dev             # serves on 5173, bound to all interfaces
 ```
@@ -90,7 +90,7 @@ README for links to the originals.
 
 2. **The last `TODO.md` §6 nice-to-have**: a step-by-step draft animation,
    like the article's GIFs. The other two are done — board codes
-   (`src/code.ts`) and the resource value sliders (`src/ui/ValuesPanel.tsx`).
+   (`src/code.ts`) and the scoring weight sliders (`src/ui/TuningPanel.tsx`).
 
 ---
 
@@ -101,7 +101,7 @@ Each is a single exported constant, so each is a one-line change.
 | assumption | where | note |
 |---|---|---|
 | Harbour multipliers take the max, not the product (x1.4, never x1.54) | `src/scoring.ts` | articles are silent; max is the conservative reading |
-| Robber tax is half the raw pips of the highest-paying hex, applied from the second settlement on | `src/scoring.ts` | `ROBBER_TAX_FRACTION` |
+| Robber tax is half the raw pips of the highest-paying hex, applied from the second settlement on | `src/scoring.ts` | `ROBBER_TAX_FRACTION`, and now a slider |
 | Normalising divisors are attainable maxima, not 100M-run maxima | `src/fairness.ts` | two of four reproduce the articles' stated values exactly |
 | A setup road is worth the best site it reaches, judged at that pick | `src/placement.ts` | `chooseRoad`; roads are not in either article and do not feed CIBI+ |
 

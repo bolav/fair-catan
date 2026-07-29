@@ -339,10 +339,18 @@ about 30s in the worker; ~88,000/s for the layout-only metrics.
   Base 32 rather than 36 so that O/0 and I/1 can be folded on input without
   colliding with real symbols; the check character so a mistyped code fails
   loudly instead of quietly loading a different board.
-- ✔ **Slider UI for the resource relative values.** `src/ui/ValuesPanel.tsx`.
-  Scoring was already parameterised on them end to end (`buildScoringIndex`,
-  `evaluateBoard`, `sweep`), so this only had to thread them through the worker
-  and derive the evaluation instead of storing it. Moving a slider re-scores
-  the board on the spot; it does not re-run the sweep, because results found
-  under one set of values are not comparable to another.
+- ✔ **Slider UI for the resource relative values, and the robber.**
+  `src/ui/TuningPanel.tsx`. Scoring was already parameterised on the values end
+  to end (`buildScoringIndex`, `evaluateBoard`, `sweep`), so this mostly had to
+  thread them through the worker and derive the evaluation instead of storing
+  it. The robber fraction joined them as a `Tuning` object rather than a third
+  positional argument. Moving a slider re-scores the board on the spot; it does
+  not re-run the sweep, because results found under one set of weights are not
+  comparable to another.
+
+  Worth knowing: the robber slider often does not move CIBI+ at all. The four
+  balance measures are properties of the board alone, and the fairness half
+  depends only on the *spread* between players — so when the tax lands equally
+  on all four, which it does whenever their best hexes carry the same pips, it
+  cancels out completely.
 - "Show the draft step by step" animation, like the article's GIFs.

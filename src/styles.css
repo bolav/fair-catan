@@ -648,3 +648,8 @@ button.link {
   gap: 10px;
   flex-wrap: wrap;
 }
+
+/* The robber has no terrain colour of its own; grey reads as "a cost". */
+.swatch.robber {
+  background: var(--text-muted);
+}

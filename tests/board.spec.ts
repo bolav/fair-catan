@@ -310,7 +310,7 @@ test.describe('board codes', () => {
   })
 })
 
-test.describe('resource value sliders', () => {
+test.describe('scoring weight sliders', () => {
   test('re-score the board without changing it', async ({ page }) => {
     await board(page)
     const codeBefore = await page.locator('.board-code code').innerText()
@@ -327,6 +327,41 @@ test.describe('resource value sliders', () => {
     await expect(page.getByText('no longer comparable', { exact: false })).toBeVisible()
   })
 
+  test('the robber slider changes what the robber costs', async ({ page }) => {
+    await board(page)
+    const codeBefore = await page.locator('.board-code code').innerText()
+    const totals = () => page.locator('td.total').allInnerTexts()
+    const before = await totals()
+
+    const robber = page.getByLabel('robber', { exact: true })
+    await expect(robber).toHaveValue('0.5')
+    // Every player is taxed on their best hex, and 5 pips is the cap.
+    await expect(page.getByText('−2.50', { exact: true })).toHaveCount(4)
+
+    await robber.fill('0')
+    await expect(page.getByText('−0.00', { exact: true })).toHaveCount(4)
+    await expect(page.getByText('was 50%')).toBeVisible()
+    expect(await totals()).not.toEqual(before)
+    // Same island — this is a scoring weight, not a board property.
+    await expect(page.locator('.board-code code')).toHaveText(codeBefore)
+  })
+
+  test('the robber need not move CIBI+, and that is not a bug', async ({ page }) => {
+    // Only the *spread* between players feeds the fairness half of CIBI+, and
+    // the four balance measures are properties of the board alone. When the
+    // tax lands equally on all four players — which it does whenever their
+    // best hexes carry the same pips — removing it shifts every total by the
+    // same amount and the spread, so CIBI+, is untouched.
+    await board(page)
+    const cibi = await page.locator('.hero-value').innerText()
+    const spread = await page.locator('.spread-note').innerText()
+
+    await page.getByLabel('robber', { exact: true }).fill('0')
+    await expect(page.getByText('−0.00', { exact: true })).toHaveCount(4)
+    await expect(page.locator('.hero-value')).toHaveText(cibi)
+    await expect(page.locator('.spread-note')).toHaveText(spread)
+  })
+
   test('reset returns the article figures and the original score', async ({ page }) => {
     await board(page)
     const cibiBefore = await page.locator('.hero-value').innerText()
@@ -334,11 +369,13 @@ test.describe('resource value sliders', () => {
     await expect(reset).toBeDisabled()
 
     await page.getByLabel('wheat', { exact: true }).fill('0.1')
+    await page.getByLabel('robber', { exact: true }).fill('0.9')
     await expect(page.locator('.hero-value')).not.toHaveText(cibiBefore)
     await expect(reset).toBeEnabled()
 
     await reset.click()
     await expect(page.getByLabel('wheat', { exact: true })).toHaveValue('1.35')
+    await expect(page.getByLabel('robber', { exact: true })).toHaveValue('0.5')
     await expect(page.locator('.hero-value')).toHaveText(cibiBefore)
     await expect(reset).toBeDisabled()
   })

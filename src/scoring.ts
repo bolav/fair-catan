@@ -49,12 +49,30 @@ export const ROBBER_TAX_FRACTION = 0.5
 
 export type ResourceValues = Readonly<Record<Resource, number>>
 
+/**
+ * Everything about the valuation that a player might reasonably disagree with,
+ * in one object. Both articles publish the resource values and invite argument
+ * about them; the robber fraction is our own reading (TODO §3), which is all
+ * the more reason to be able to turn it.
+ */
+export interface Tuning {
+  values: ResourceValues
+  /** Fraction of the highest-paying hex's return lost to the robber. */
+  robberTax: number
+}
+
+export const DEFAULT_TUNING: Tuning = {
+  values: RESOURCE_VALUES,
+  robberTax: ROBBER_TAX_FRACTION,
+}
+
 /** Per-board lookup tables, built once and reused across all 8 draft picks. */
 export interface ScoringIndex {
   geom: Geometry
   hexes: Hex[]
   hexPips: number[]
   values: ResourceValues
+  robberTax: number
   /** node id -> adjacent hex indices */
   nodeHexes: number[][]
   /** node id -> harbour kinds reachable from it (0 or 1 in practice) */
@@ -63,7 +81,8 @@ export interface ScoringIndex {
   locationScores: number[]
 }
 
-export function buildScoringIndex(board: Board, values: ResourceValues = RESOURCE_VALUES): ScoringIndex {
+export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): ScoringIndex {
+  const { values = RESOURCE_VALUES, robberTax = ROBBER_TAX_FRACTION } = tuning
   const geom = geometry()
   const hexPips = board.hexes.map((h) => pips(h.number))
   const nodeHexes = geom.nodes.map((n) => n.hexes)
@@ -79,7 +98,16 @@ export function buildScoringIndex(board: Board, values: ResourceValues = RESOURC
     return total
   })
 
-  return { geom, hexes: board.hexes, hexPips, values, nodeHexes, nodeHarbours, locationScores }
+  return {
+    geom,
+    hexes: board.hexes,
+    hexPips,
+    values,
+    robberTax,
+    nodeHexes,
+    nodeHarbours,
+    locationScores,
+  }
 }
 
 /** Common location score (TODO §2.3) — the article's static right-hand list. */
@@ -161,7 +189,7 @@ export function playerScore(index: ScoringIndex, settlements: readonly number[])
 
   const numberBonus = NUMBER_BONUS * numbers.size
   const resourceBonus = RESOURCE_BONUS * resources.size
-  const robberTax = settlements.length >= 2 ? ROBBER_TAX_FRACTION * highestReturn : 0
+  const robberTax = settlements.length >= 2 ? index.robberTax * highestReturn : 0
 
   return {
     total: base + numberBonus + resourceBonus - robberTax,

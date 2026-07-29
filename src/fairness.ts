@@ -21,7 +21,7 @@ import {
   type Geometry,
   type ProducingResource,
 } from './board'
-import { buildScoringIndex, type ResourceValues } from './scoring'
+import { buildScoringIndex, type Tuning } from './scoring'
 import { runDraft, type DraftResult } from './placement'
 
 /**
@@ -195,9 +195,9 @@ export interface BoardEvaluation {
   cibiPlus: number
 }
 
-export function evaluateBoard(board: Board, values?: ResourceValues): BoardEvaluation {
+export function evaluateBoard(board: Board, tuning?: Partial<Tuning>): BoardEvaluation {
   const geom = geometry()
-  const index = buildScoringIndex(board, values)
+  const index = buildScoringIndex(board, tuning)
   const draft = runDraft(index)
   const raw = rawBalance(board, geom)
   const balance = normalizeBalance(raw)

@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { hashSeed } from './board'
 import { decodeBoardCode, encodeBoardCode } from './code'
 import { evaluateSeed, type SweepMode, type SweepResult } from './generate'
-import { RESOURCE_VALUES, type ResourceValues } from './scoring'
+import { DEFAULT_TUNING, type Tuning } from './scoring'
 import type { SweepMessage, SweepRequest } from './worker/sweep.worker'
 import { BoardView } from './ui/BoardView'
 import { BUTTON_LABELS, CopyButton } from './ui/CopyButton'
 import { CibiPanel } from './ui/CibiPanel'
 import { PlayerPanel } from './ui/PlayerPanel'
 import { SetupSheet } from './ui/SetupSheet'
-import { ValuesPanel } from './ui/ValuesPanel'
+import { TuningPanel } from './ui/TuningPanel'
 
 const DEFAULT_SEED = 'catan'
 const DEFAULT_BOARDS = 20_000
@@ -46,7 +46,10 @@ export default function App() {
   const [layers, setLayers] = useState<Layers>({ settlements: true, roads: true, cards: true })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [values, setValues] = useState<ResourceValues>({ ...RESOURCE_VALUES })
+  const [tuning, setTuning] = useState<Tuning>(() => ({
+    values: { ...DEFAULT_TUNING.values },
+    robberTax: DEFAULT_TUNING.robberTax,
+  }))
   const [shown, setShown] = useState<Shown>(() => ({ boardSeed: hashSeed(DEFAULT_SEED) }))
   const [codeInput, setCodeInput] = useState('')
   const [codeError, setCodeError] = useState(false)
@@ -55,7 +58,10 @@ export default function App() {
   // Scoring is a pure function of the board seed and the resource values, so
   // the evaluation is derived rather than stored — moving a slider re-scores
   // the board on the spot, and there is no way for the two to drift apart.
-  const evaluation = useMemo(() => evaluateSeed(shown.boardSeed, values), [shown.boardSeed, values])
+  const evaluation = useMemo(
+    () => evaluateSeed(shown.boardSeed, tuning),
+    [shown.boardSeed, tuning],
+  )
   const boardCode = encodeBoardCode(shown.boardSeed)
 
   const workerRef = useRef<Worker | null>(null)
@@ -112,9 +118,9 @@ export default function App() {
       workerRef.current = null
     }
 
-    const request: SweepRequest = { seed: hashSeed(seedText), boards, mode, values }
+    const request: SweepRequest = { seed: hashSeed(seedText), boards, mode, tuning }
     worker.postMessage(request)
-  }, [seedText, boards, mode, values])
+  }, [seedText, boards, mode, tuning])
 
   const stop = useCallback(() => {
     workerRef.current?.terminate()
@@ -278,7 +284,7 @@ export default function App() {
         </div>
         <div>
           <CibiPanel evaluation={evaluation} />
-          <ValuesPanel values={values} onChange={setValues} disabled={running} />
+          <TuningPanel tuning={tuning} onChange={setTuning} disabled={running} />
           <SetupSheet
             board={evaluation.board}
             draft={evaluation.draft}

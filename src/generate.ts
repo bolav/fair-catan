@@ -5,7 +5,7 @@
 
 import { generateFullBoard, makeRng, type Board } from './board'
 import { evaluateBoard, type Balance, type BoardEvaluation } from './fairness'
-import type { ResourceValues } from './scoring'
+import type { Tuning } from './scoring'
 
 export type SweepMode = 'best' | 'worst'
 
@@ -17,7 +17,7 @@ export interface SweepOptions {
   mode?: SweepMode
   /** How many boards to return. */
   keep?: number
-  values?: ResourceValues
+  tuning?: Partial<Tuning>
   /** Called every `progressEvery` boards with the number examined so far. */
   onProgress?: (examined: number, total: number) => void
   progressEvery?: number
@@ -48,8 +48,8 @@ export function boardFromSeed(boardSeed: number): Board {
   return generateFullBoard(makeRng(boardSeed))
 }
 
-export function evaluateSeed(boardSeed: number, values?: ResourceValues): BoardEvaluation {
-  return evaluateBoard(boardFromSeed(boardSeed), values)
+export function evaluateSeed(boardSeed: number, tuning?: Partial<Tuning>): BoardEvaluation {
+  return evaluateBoard(boardFromSeed(boardSeed), tuning)
 }
 
 export function sweep(options: SweepOptions): SweepResult {
@@ -58,7 +58,7 @@ export function sweep(options: SweepOptions): SweepResult {
     seed,
     mode = 'best',
     keep = 1,
-    values,
+    tuning,
     onProgress,
     progressEvery = 500,
     shouldStop,
@@ -85,7 +85,7 @@ export function sweep(options: SweepOptions): SweepResult {
   for (let i = 0; i < boards; i++) {
     if (shouldStop?.()) break
     const boardSeed = Math.floor(master() * 0x100000000) >>> 0
-    const evaluation = evaluateSeed(boardSeed, values)
+    const evaluation = evaluateSeed(boardSeed, tuning)
     examined++
 
     cibiSum += evaluation.cibiPlus
