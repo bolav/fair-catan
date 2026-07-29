@@ -17,6 +17,12 @@ export function PlayerPanel({ board, draft }: { board: Board; draft: DraftResult
       .filter((h) => h.nodes.some((n) => draft.settlements[player].includes(n)))
       .map((h) => harbourLabel(h.kind))
 
+  // No draft is guaranteed to land on a harbour, and the footnote reads as a
+  // loose end when none does.
+  const settled = draft.settlements
+    .map((_, player) => ({ player, harbours: harboursOf(player) }))
+    .filter((entry) => entry.harbours.length > 0)
+
   return (
     <section className="card">
       <h2>Starting positions</h2>
@@ -86,13 +92,12 @@ export function PlayerPanel({ board, draft }: { board: Board; draft: DraftResult
         </table>
       </div>
 
-      <p className="note" style={{ marginTop: 12 }}>
-        * multiplied by a harbour the player settled on.{' '}
-        {draft.settlements.map((_, player) => {
-          const harbours = harboursOf(player)
-          return harbours.length ? `P${player + 1}: ${harbours.join(', ')}. ` : ''
-        })}
-      </p>
+      {settled.length > 0 && (
+        <p className="note" style={{ marginTop: 12 }}>
+          * multiplied by a harbour the player settled on.{' '}
+          {settled.map(({ player, harbours }) => `P${player + 1}: ${harbours.join(', ')}. `)}
+        </p>
+      )}
     </section>
   )
 }

@@ -168,6 +168,10 @@ export default function App() {
                   Player {player + 1}
                 </span>
               ))}
+              <span className="legend-item">
+                <span className="swatch round ringed" />
+                Pays out at setup
+              </span>
               <span className="legend-item">A–F — sea frame pieces, clockwise from the top left</span>
             </div>
           </section>
@@ -175,7 +179,7 @@ export default function App() {
         </div>
         <div>
           <CibiPanel evaluation={evaluation} />
-          <SetupSheet board={evaluation.board} seed={boardSeed} />
+          <SetupSheet board={evaluation.board} draft={evaluation.draft} seed={boardSeed} />
         </div>
       </div>
     </div>

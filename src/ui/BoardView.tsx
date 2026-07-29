@@ -32,6 +32,11 @@ const HARBOUR_W = 50
 const HARBOUR_H = 20
 const HARBOUR_TEXT = 9.5
 
+const ROAD_W = 7
+/** Fractions along the edge: clear of the settlement marker, short of the far junction. */
+const ROAD_START = 0.3
+const ROAD_END = 0.9
+
 const TERRAIN: Record<Resource, string> = {
   wood: 'var(--terrain-wood)',
   brick: 'var(--terrain-brick)',
@@ -202,17 +207,67 @@ export function BoardView({ board, draft }: BoardViewProps) {
           const d = unit({ x: p.x - center.x, y: p.y - center.y })
           return { x: p.x - d.x, y: p.y - d.y }
         })
+        const count = pips(hex.number)
+        return (
+          <path key={`${hex.q},${hex.r}`} d={path(corners)} fill={TERRAIN[hex.resource]}>
+            <title>
+              {`${hex.resource}${
+                hex.number === null ? ' (desert)' : ` ${hex.number} — ${count} pips`
+              }`}
+            </title>
+          </path>
+        )
+      })}
+
+      {/*
+        Roads sit on the hex edges, which run straight through where the
+        terrain names are set — so they go down before the names and tokens,
+        and read as being on the board rather than over the labelling.
+      */}
+      {draft.roads.map((road) => {
+        const a = scale(geom.nodes[road.from])
+        const b = scale(geom.nodes[road.to])
+        const at = (t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t })
+        const start = at(ROAD_START)
+        const end = at(ROAD_END)
+        return (
+          <g key={`road-${road.pick}`}>
+            <line
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              stroke="var(--surface-1)"
+              strokeWidth={ROAD_W + 4}
+              strokeLinecap="round"
+            />
+            <line
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+              stroke={PLAYER_COLORS[road.player]}
+              strokeWidth={ROAD_W}
+              strokeLinecap="round"
+            >
+              <title>
+                {`Player ${road.player + 1}'s road, placed with pick ${road.pick + 1}` +
+                  (road.target === null
+                    ? ' — no open site beyond it'
+                    : ` — opens a ${road.targetScore.toFixed(1)}-point site`)}
+              </title>
+            </line>
+          </g>
+        )
+      })}
+
+      {/* Terrain names and number tokens. */}
+      {board.hexes.map((hex, i) => {
+        const center = scale(geom.centers[i])
         const red = hex.number === 6 || hex.number === 8
         const count = pips(hex.number)
         return (
-          <g key={`${hex.q},${hex.r}`}>
-            <path d={path(corners)} fill={TERRAIN[hex.resource]}>
-              <title>
-                {`${hex.resource}${
-                  hex.number === null ? ' (desert)' : ` ${hex.number} — ${count} pips`
-                }`}
-              </title>
-            </path>
+          <g key={`label-${hex.q},${hex.r}`}>
             <text
               x={center.x}
               y={center.y - 26}
@@ -300,15 +355,27 @@ export function BoardView({ board, draft }: BoardViewProps) {
       {/* Starting settlements, numbered so identity never rests on colour. */}
       {draft.placements.map((placement) => {
         const p = scale(geom.nodes[placement.node])
+        const pays = draft.openingHands.some((h) => h.node === placement.node)
         return (
           <g key={placement.pick}>
+            {/* A second ring marks the settlement that pays out at setup. */}
+            {pays && (
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={17}
+                fill="none"
+                stroke={PLAYER_COLORS[placement.player]}
+                strokeWidth={2.5}
+              />
+            )}
             <circle
               cx={p.x}
               cy={p.y}
               r={12}
               fill={PLAYER_COLORS[placement.player]}
               stroke="var(--surface-1)"
-              strokeWidth={2}
+              strokeWidth={pays ? 3 : 2}
             />
             <text
               x={p.x}
@@ -321,7 +388,8 @@ export function BoardView({ board, draft }: BoardViewProps) {
             >
               {placement.player + 1}
               <title>
-                {`Player ${placement.player + 1}, pick ${placement.pick + 1} of 8 — +${placement.marginal.toFixed(2)} points`}
+                {`Player ${placement.player + 1}, pick ${placement.pick + 1} of 8 — +${placement.marginal.toFixed(2)} points` +
+                  (pays ? ' — pays out at setup' : '')}
               </title>
             </text>
           </g>

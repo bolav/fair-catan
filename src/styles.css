@@ -308,6 +308,34 @@ button:disabled {
   border-radius: 50%;
 }
 
+/* Mirrors the second ring the board draws around a paying settlement. */
+.swatch.ringed {
+  background: var(--text-secondary);
+  box-shadow: 0 0 0 1.5px var(--surface-1), 0 0 0 3px var(--text-secondary);
+  margin: 2px 3px;
+  width: 9px;
+  height: 9px;
+}
+
+/* --- setup sheet placement lists ----------------------------------------- */
+
+.placements {
+  margin: 0 0 14px;
+  padding-left: 20px;
+}
+
+.placements li {
+  margin-bottom: 4px;
+}
+
+/* The legend gets its box from .legend-item's flex context; these are loose
+   in a list item, so they have to be blockified to take a width at all. */
+.placements .swatch {
+  display: inline-block;
+  vertical-align: -1px;
+  margin-right: 4px;
+}
+
 /* --- hero + meters ------------------------------------------------------- */
 
 .hero {
