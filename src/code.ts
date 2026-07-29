@@ -1,4 +1,4 @@
-// Board codes: the short shareable string for a board (TODO §6).
+// Board codes: the short shareable string for a board.
 //
 // A board is entirely determined by its 32-bit board seed — tiles, numbers and
 // frame arrangement all come out of it — so the code is just that number in

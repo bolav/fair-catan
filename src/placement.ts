@@ -1,4 +1,4 @@
-// The starting-settlement simulation (TODO §2.5).
+// The starting-settlement simulation.
 //
 // Four players, snake draft 1-2-3-4-4-3-2-1. Each player greedily takes the
 // location with the highest *marginal* value to them among the positions still

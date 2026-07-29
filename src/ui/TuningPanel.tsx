@@ -1,10 +1,10 @@
-// Sliders for the scoring weights (TODO §6).
+// Sliders for the scoring weights.
 //
 // The article's resource values are the average expected cost of the top 50
 // fastest victories, and it explicitly invites you to disagree with them — a
 // player who thinks ore is overrated should be able to say so and see the board
 // change. The robber fraction is not from the article at all; it is our reading
-// of "half the highest-paying hexagon" (TODO §3), which is all the more reason
+// of "half the highest-paying hexagon" (see README), which is all the more reason
 // to expose it.
 //
 // Everything downstream is a pure function of these, so moving a slider

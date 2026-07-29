@@ -254,7 +254,7 @@ export function geometry(): Geometry {
 }
 
 // ---------------------------------------------------------------------------
-// The physical sea frame (TODO §3.1)
+// The physical sea frame
 // ---------------------------------------------------------------------------
 
 export type HarbourKind = ProducingResource | 'generic'
@@ -280,8 +280,9 @@ export const EDGES_PER_PIECE = 5
  * decide it.
  *
  * The user's physical pieces do: read from the left, a piece's inner profile
- * runs low, high, low, high, low, high. That is the -1 cut. (TODO §3.1, the
- * question NEXT_STEPS step 3 was holding open.)
+ * runs low, high, low, high, low, high. That is the -1 cut, and the photo of
+ * the pieces agrees independently: it puts the steep joint on a piece's left
+ * end and the shallow one on its right, which only the -1 cut produces.
  */
 export const PIECE_START_OFFSET = -1
 

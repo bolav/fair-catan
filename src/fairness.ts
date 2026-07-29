@@ -1,5 +1,5 @@
-// The Fairness Measure (TODO §2.6), the four CIBI balance sub-metrics (§2.8)
-// and the CIBI+ index that combines them (§2.7).
+// The Fairness Measure, the four CIBI balance sub-metrics, and the CIBI+ index
+// that combines them.
 //
 //   CIBI+ = ( mean(RPD, RollNumberClustering, ResourceClustering, HarborReturnBalance)
 //             + FairnessMeasure ) / 2
@@ -48,9 +48,13 @@ export const FAIRNESS_SCORE_PRECISION = 1
  *   harbor return balance  492.889  = 4436/9
  *
  * A 15M-board random sweep reaches 113.3 / 30 / 95 / 396, i.e. it approaches
- * these from below, as expected. (TODO §2.8 guessed ~39 for the resource
- * probability divisor from render quantisation; that does not survive contact
- * with the metric's actual 1/9 step size, so the attainable maximum is used.)
+ * these from below, as expected.
+ *
+ * The renders' quantisation suggests ~39 for the resource probability divisor,
+ * but that does not survive contact with the metric's actual 1/9 step size:
+ * raw = (81·Σa² − 162·Σaᵢeᵢ + 55506)/81 is always ≡ 1 mod 3 over 27, so a
+ * divisor of 13 would be implied, which would put most boards far above 1.0.
+ * The attainable maximum is used instead.
  */
 export const NORMALIZERS = {
   resourceProbabilityDistribution: 9336 / 81,

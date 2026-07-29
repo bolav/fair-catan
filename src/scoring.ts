@@ -1,4 +1,4 @@
-// Location valuation (TODO §2.1-§2.4).
+// Location valuation.
 //
 // A location's *common* value is the pip-weighted sum of its adjacent hexes.
 // A location's value *to a particular player* additionally depends on what that
@@ -52,7 +52,7 @@ export type ResourceValues = Readonly<Record<Resource, number>>
 /**
  * Everything about the valuation that a player might reasonably disagree with,
  * in one object. Both articles publish the resource values and invite argument
- * about them; the robber fraction is our own reading (TODO §3), which is all
+ * about them; the robber fraction is our own reading (see README), which is all
  * the more reason to be able to turn it.
  */
 export interface Tuning {
@@ -110,7 +110,7 @@ export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): S
   }
 }
 
-/** Common location score (TODO §2.3) — the article's static right-hand list. */
+/** Common location score — the article's static right-hand list. */
 export function locationScore(index: ScoringIndex, node: number): number {
   return index.locationScores[node]
 }
@@ -135,7 +135,7 @@ function emptyByResource(): Record<ProducingResource, number> {
 }
 
 /**
- * Score a player's settlements (TODO §2.4).
+ * Score a player's settlements.
  *
  * Harbour multipliers apply to the player's whole portfolio of that resource;
  * when several harbours cover the same resource the best one wins rather than

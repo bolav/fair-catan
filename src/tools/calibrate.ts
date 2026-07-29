@@ -1,5 +1,5 @@
 // Empirically calibrate the CIBI normalising divisors and sanity-check the
-// fairness divisor hypothesis (TODO §2.6, §2.8).
+// fairness divisor hypothesis.
 //
 //   pnpm calibrate                 # default sweep
 //   pnpm calibrate 2000000 20000 7 # raw-metric boards, full-sim boards, seed
