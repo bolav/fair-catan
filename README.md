@@ -17,25 +17,21 @@ the same island back, sea frame included.
 ## Running it
 
 ```
+pnpm install
 pnpm dev          # http://localhost:5173
 pnpm test         # 54 unit tests
-pnpm test:e2e     # 24 browser tests, needs Playwright + Chromium
+pnpm test:e2e     # 24 browser tests
 pnpm build
 ```
 
-> **Never run `pnpm install` in this container.** `node_modules` is baked into
-> the image. pnpm 11 decides the baked install is stale and tries to purge it,
-> and the network is firewalled, so that is unrecoverable.
-> `pnpm-workspace.yaml` sets `verifyDepsBeforeRun: false` to stop it doing this
-> before every script — leave that setting alone. New dependencies have to come
-> from outside the container, or from rebuilding the image.
+The browser tests need Chromium: `pnpm exec playwright install --with-deps
+chromium`. Only `@playwright/test` is a direct dependency, so import `chromium`
+from there rather than from `playwright`.
 
-Two other things about this environment. `vite-node` is only a transitive
-dependency and has no bin, so the node-side tools run through
-`scripts/run-ts.mjs`, which resolves it. Playwright finds its browsers via
-`PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright`, and only `@playwright/test` is
-hoisted into `node_modules` — so import `chromium` from there, not from
-`playwright`.
+`pnpm-workspace.yaml` sets `verifyDepsBeforeRun: false`, which stops pnpm 11
+re-checking the dependency tree before every script. `vite-node` is only a
+transitive dependency and has no bin, so the node-side tools run through
+`scripts/run-ts.mjs`, which resolves it.
 
 Supporting tools:
 
