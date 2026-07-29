@@ -4,6 +4,11 @@
 // A location's value *to a particular player* additionally depends on what that
 // player already owns — harbours, distinct numbers, distinct resources — which
 // is why the greedy draft has to re-rank the board for every pick.
+//
+// The model is not ours. It comes from two Board Game Analysis articles:
+//   https://www.boardgameanalysis.com/fair-catan-boards-this-time-with-resources/
+//   https://www.boardgameanalysis.com/what-is-a-balanced-catan-board/
+// See README for what they cover and what had to be reverse-engineered.
 
 import {
   geometry,
@@ -18,7 +23,8 @@ import {
 } from './board'
 
 /**
- * Average expected cost of the top 50 fastest victories (the resource values table).
+ * Average expected cost of the top 50 fastest victories, from the resource
+ * values table in "Fair Catan Boards, this time with resources!" (see README).
  * Exported as a single constant so it is easy to retune from the UI.
  */
 export const RESOURCE_VALUES: Readonly<Record<Resource, number>> = {

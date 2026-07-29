@@ -5,6 +5,11 @@
 // legal under the distance rule. Because harbours and the distinct-number /
 // distinct-resource bonuses are player-specific, the ranking differs per player
 // on the second round — that asymmetry is the whole point of the measure.
+//
+// The model is not ours. It comes from two Board Game Analysis articles:
+//   https://www.boardgameanalysis.com/fair-catan-boards-this-time-with-resources/
+//   https://www.boardgameanalysis.com/what-is-a-balanced-catan-board/
+// See README for what they cover and what had to be reverse-engineered.
 
 import type { ProducingResource } from './board'
 import { playerScore, type PlayerScore, type ScoringIndex } from './scoring'

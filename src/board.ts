@@ -296,7 +296,7 @@ export function slotForEdge(edge: number, ringLength: number): number {
 }
 
 /**
- * The user's actual frame, read off the sea frame photo. All six pieces share
+ * The user's actual frame, read off a photo of them. All six pieces share
  * the same notch/tab profile, so any piece fits any of the 6 ring slots.
  * Two-harbour pieces carry their harbours 3 edges apart at local {0, 3};
  * one-harbour pieces carry theirs centred at local {2}.

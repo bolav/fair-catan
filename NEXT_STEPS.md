@@ -81,7 +81,7 @@ README for links to the originals.
    0.044 where the article's best 50 sit at 0.064-0.069. That is expected if
    those PNGs are a *sample* of fair boards; it would mean something is off if
    they are the actual extremes of the article's 100M run. Reading a handful of
-   component breakdowns out of the fair-board image and reproducing them
+   component breakdowns out of the article's fair-board image and reproducing them
    exactly would settle it. See `TODO.md` §3, "Where our numbers land".
 
    Note that the `PIECE_START_OFFSET` fix moved every harbour one coastal edge
@@ -111,7 +111,7 @@ Resolved:
   distinct arrangements is correct.
 - A frame piece starts on an *inner* coastal node, not an outer one —
   `PIECE_START_OFFSET = -1` in `src/board.ts`. Confirmed against the user's
-  physical pieces and independently against the sea frame photo.
+  physical pieces and independently against the photo of them.
 - The harbour local offsets within a piece — `{0, 3}` on a 2-harbour piece,
   centre `{2}` on a 1-harbour piece. Confirmed by the user. With the two above,
   the whole sea-frame model is now confirmed rather than assumed.

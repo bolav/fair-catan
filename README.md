@@ -1,0 +1,44 @@
+# Fair Catan boards, with starting positions
+
+Generates Catan islands that are *fair*, scores them with CIBI+, and renders
+each board together with the simulated opening draft — eight settlements, their
+roads, and the cards each player is dealt at setup. The harbours come from a
+real six-piece sea frame, so anything generated here can be built on the table.
+
+```
+pnpm dev          # http://localhost:5173
+pnpm test         # unit tests
+pnpm test:e2e     # browser tests (needs Playwright + Chromium)
+pnpm build
+```
+
+See `TODO.md` for the specification and the reasoning behind every constant,
+and `NEXT_STEPS.md` for the current state and what to do next.
+
+## Credits
+
+The fairness model implemented here is not original. It comes from two articles
+by Board Game Analysis, and this project is an implementation of them:
+
+- **[Fair Catan Boards, this time with resources!](https://www.boardgameanalysis.com/fair-catan-boards-this-time-with-resources/)**
+  — the CIBI+ index, the resource relative values, and the simulated
+  1-2-3-4-4-3-2-1 opening draft that the fairness measure is derived from.
+- **[What is a balanced Catan board?](https://www.boardgameanalysis.com/what-is-a-balanced-catan-board/)**
+  — the original CIBI index and the four balance sub-metrics CIBI+ reuses:
+  resource probability distribution, roll number clustering, resource
+  clustering, and harbour return balance.
+
+Please read the originals. They explain the *why* far better than this
+implementation's comments do.
+
+Where the articles do not state a constant, it was reverse-engineered from the
+scored board images they publish, or assumed; every such case is listed in
+`TODO.md` §3 and in the assumptions table in `NEXT_STEPS.md`.
+
+The reference material used while building this — saved copies of the two
+articles and their images — is not redistributed here. Follow the links above.
+
+The sea frame model is specific to the physical Catan set this was built for,
+and was confirmed against those pieces rather than taken from the articles.
+
+*Catan is a trademark of Catan GmbH. This is an unaffiliated fan project.*

@@ -6,6 +6,11 @@
 //
 // Lower is better. The article's best 50 boards land at 0.064-0.069, its worst
 // 50 at 0.44-0.62.
+//
+// The model is not ours. It comes from two Board Game Analysis articles:
+//   https://www.boardgameanalysis.com/fair-catan-boards-this-time-with-resources/
+//   https://www.boardgameanalysis.com/what-is-a-balanced-catan-board/
+// See README for what they cover and what had to be reverse-engineered.
 
 import {
   geometry,
@@ -23,7 +28,7 @@ import { runDraft, type DraftResult } from './placement'
  * Player scores are compared after rounding to one decimal, and a spread of 15
  * points is treated as maximally unfair.
  *
- * Reverse-engineered from the fair-board image and the unfair-board image, where
+ * Reverse-engineered from the scored board images the articles publish, where
  * every Fairness Board Measure is an exact multiple of 1/150 = 0.1/15.
  */
 export const FAIRNESS_SPREAD_DIVISOR = 15

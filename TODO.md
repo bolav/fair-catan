@@ -104,8 +104,8 @@ lengths of another). Player-specific valuation means the "best" spot differs
 per player on the second round.
 
 ### 2.6 Fairness Measure — reverse-engineered from the reference images
-Every `Fairness Board Measure` value in the fair-board image and
-the unfair-board image is an exact multiple of `1/150` (0.047 = 7/150,
+Every `Fairness Board Measure` value in the fair and unfair board images is
+an exact multiple of `1/150` (0.047 = 7/150,
 0.833 = 125/150, 0.760 = 114/150, 0.673 = 101/150 …). That is consistent with:
 
 ```
@@ -202,7 +202,7 @@ a divisor of 13, which is impossible — 13 would put most boards far above 1.0.
    - **The UI must output the frame piece order**, otherwise a generated board
      can't be physically reproduced.
 
-   **The user's actual frame** (read off the sea frame photo, six pieces laid
+   **The user's actual frame** (read off a photo, six pieces laid
    out top to bottom). All six pieces are the same shape — same left notch,
    same right tab — so any piece fits any of the 6 ring slots:
 
@@ -323,8 +323,8 @@ about 30s in the worker; ~88,000/s for the layout-only metrics.
 - CIBI 1.0 (six measures) over 100M random boards: mean **0.243**, sd
   **0.056**. Not directly comparable to CIBI+, but a useful order-of-magnitude
   check on our normalized components.
-- the "What is a balanced Catan board?" article scores the rulebook beginner island and a 2016 CatanCon
-  tournament board (top 0.2%); the "Fair Catan Boards" article scores the 2020 Canadian
+- the "What is a balanced Catan board?" article scores the rulebook beginner island and a
+  2016 CatanCon tournament board (top 0.2%); the "Fair Catan Boards" article scores the 2020 Canadian
   championship board. Good regression fixtures if we transcribe them.
 - The 100 boards in the two PNGs come with full component breakdowns — the best
   available end-to-end check that our numbers reproduce the article's.
