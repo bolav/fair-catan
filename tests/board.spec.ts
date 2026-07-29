@@ -239,6 +239,66 @@ test.describe('board codes', () => {
     await expect(page.locator('.board-code code')).toHaveText(shown)
   })
 
+  /** Paste into a scratch field — clipboard *read* permission is denied. */
+  async function paste(page: Page): Promise<string> {
+    await page.evaluate(() => {
+      const t = document.createElement('textarea')
+      t.id = 'paste-target'
+      document.body.appendChild(t)
+    })
+    await page.locator('#paste-target').focus()
+    await page.keyboard.press('Control+V')
+    return page.locator('#paste-target').inputValue()
+  }
+
+  test('the copy button puts the code on the clipboard', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await board(page)
+
+    const shown = await page.locator('.board-code code').innerText()
+    await page.locator('.board-code button').click()
+    await expect(page.locator('.board-code button')).toHaveText(/copied/)
+    expect(await paste(page)).toBe(shown)
+
+    // The first version left navigator.clipboard's rejection unhandled here.
+    expect(errors).toEqual([])
+  })
+
+  test('copies even where the clipboard API does not exist', async ({ page }) => {
+    // Reached over http on a LAN address — which is exactly how this dev
+    // server is meant to be used — isSecureContext is false and
+    // navigator.clipboard is undefined outright. The old code optional-chained
+    // straight past that and did nothing at all, silently.
+    await page.addInitScript(() => {
+      Object.defineProperty(window, 'isSecureContext', { value: false, configurable: true })
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true })
+    })
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await board(page)
+
+    const shown = await page.locator('.board-code code').innerText()
+    await page.locator('.board-code button').click()
+    await expect(page.locator('.board-code button')).toHaveText(/copied/)
+    expect(await paste(page)).toBe(shown)
+    expect(errors).toEqual([])
+  })
+
+  test('the code is selectable in the controls, not just a placeholder', async ({ page }) => {
+    await board(page)
+    const shown = await page.locator('.board-code code').innerText()
+    // It has to be a real value: you cannot select or copy placeholder text.
+    await expect(code(page)).toHaveValue(shown)
+
+    await code(page).click()
+    const selected = await page.evaluate(() => {
+      const el = document.getElementById('code') as HTMLInputElement
+      return el.value.slice(el.selectionStart ?? 0, el.selectionEnd ?? 0)
+    })
+    expect(selected).toBe(shown)
+  })
+
   test('accepts a code typed loosely', async ({ page }) => {
     await board(page)
     const shown = await page.locator('.board-code code').innerText()

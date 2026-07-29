@@ -5,6 +5,7 @@ import { evaluateSeed, type SweepMode, type SweepResult } from './generate'
 import { RESOURCE_VALUES, type ResourceValues } from './scoring'
 import type { SweepMessage, SweepRequest } from './worker/sweep.worker'
 import { BoardView } from './ui/BoardView'
+import { BUTTON_LABELS, CopyButton } from './ui/CopyButton'
 import { CibiPanel } from './ui/CibiPanel'
 import { PlayerPanel } from './ui/PlayerPanel'
 import { SetupSheet } from './ui/SetupSheet'
@@ -49,6 +50,7 @@ export default function App() {
   const [shown, setShown] = useState<Shown>(() => ({ boardSeed: hashSeed(DEFAULT_SEED) }))
   const [codeInput, setCodeInput] = useState('')
   const [codeError, setCodeError] = useState(false)
+  const codeRef = useRef<HTMLInputElement>(null)
 
   // Scoring is a pure function of the board seed and the resource values, so
   // the evaluation is derived rather than stored — moving a slider re-scores
@@ -65,10 +67,15 @@ export default function App() {
 
   useEffect(() => () => workerRef.current?.terminate(), [])
 
+  // The field always shows the board on screen, so it can be read off, selected
+  // and copied. Typing into it stages a different code until Load is pressed.
+  useEffect(() => {
+    setCodeInput(boardCode)
+    setCodeError(false)
+  }, [boardCode])
+
   const showSeed = useCallback((boardSeed: number) => {
     setShown({ boardSeed })
-    setCodeInput('')
-    setCodeError(false)
   }, [])
 
   const loadCode = useCallback(() => {
@@ -78,7 +85,6 @@ export default function App() {
       return
     }
     setShown({ boardSeed: seed })
-    setCodeInput('')
     setCodeError(false)
   }, [codeInput])
 
@@ -177,12 +183,13 @@ export default function App() {
           <div className="code-field">
             <input
               id="code"
+              ref={codeRef}
               value={codeInput}
-              placeholder={boardCode}
               spellCheck={false}
               autoComplete="off"
               size={10}
               aria-invalid={codeError}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => {
                 setCodeInput(e.target.value)
                 setCodeError(false)
@@ -191,7 +198,11 @@ export default function App() {
                 if (e.key === 'Enter') loadCode()
               }}
             />
-            <button onClick={loadCode} disabled={running || codeInput.trim() === ''}>
+            <CopyButton text={boardCode} source={codeRef} className="" labels={BUTTON_LABELS} />
+            <button
+              onClick={loadCode}
+              disabled={running || codeInput.trim() === '' || codeInput === boardCode}
+            >
               Load
             </button>
           </div>
