@@ -14,9 +14,6 @@ import { generateFullBoard, makeRng } from '../board'
 import { evaluateSeed } from '../generate'
 import { rawBalance, NORMALIZERS, type Balance } from '../fairness'
 
-// Node-only script; @types/node is not a dependency of this browser project.
-declare const process: { argv: string[] }
-
 const rawBoards = Number(process.argv[2] ?? 500_000)
 const simBoards = Number(process.argv[3] ?? 5_000)
 const seed = Number(process.argv[4] ?? 1)

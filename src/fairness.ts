@@ -60,7 +60,7 @@ export const BALANCE_LABELS: Record<BalanceKey, string> = {
   resourceProbabilityDistribution: 'Resource probability distribution',
   rollNumberClustering: 'Roll number clustering',
   resourceClustering: 'Resource clustering',
-  harbourReturnBalance: 'Harbor return balance',
+  harbourReturnBalance: 'Harbour return balance',
 }
 
 export type Balance = Record<BalanceKey, number>

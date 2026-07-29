@@ -16,9 +16,6 @@ import {
 } from '../board'
 import { rawBalance, type Balance } from '../fairness'
 
-// Node-only script; @types/node is not a dependency of this browser project.
-declare const process: { argv: string[] }
-
 const restarts = Number(process.argv[2] ?? 400)
 const steps = Number(process.argv[3] ?? 4000)
 const rng = makeRng(Number(process.argv[4] ?? 1))
