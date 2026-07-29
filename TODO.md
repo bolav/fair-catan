@@ -229,13 +229,22 @@ a divisor of 13, which is impossible — 13 would put most boards far above 1.0.
    - ✔ **Assembly order — confirmed by the user: the pieces can be assembled any
      way.** So the generator searching all 120 distinct arrangements is correct,
      and the setup sheet's piece order is a real instruction, not a suggestion.
-   - ⚠ **Still unverified:** the exact *local* edge index of each harbour
-     (`{0,3}` vs `{1,4}` on a 2-harbour piece) can't be read reliably from the
-     photo. It's a pure phase shift — irrelevant for the standard alternating
-     order, and it only perturbs gaps for non-alternating piece orders. The
-     cheapest check is by eye: lay the frame out in the standard alternating
-     order and confirm the harbours land on the classic 3-4-3 gaps the app
-     predicts. Until then, `{0,3}` and centre `{2}` are assumed.
+   - ✔ **Where a piece starts on the coast — confirmed by the user.** Six
+     consecutive coastal edges share one straight midline and a piece takes
+     five of them, so there are two ways to cut a piece out of the ring and
+     both give a straight bar. Geometry cannot choose; the physical pieces can.
+     Read from the left, a piece's inner profile runs **low, high, low, high,
+     low, high**, which is one edge earlier than the ring walk's own start —
+     `PIECE_START_OFFSET = -1` in `src/board.ts`. The photo agrees
+     independently: it puts the steep joint on a piece's left end and the
+     shallow one on its right, and only the -1 cut does that (offset 0 is the
+     mirror image). This rotates all nine harbours one coastal edge round the
+     island, so it changes scoring; it leaves the 3-4-3 gap pattern alone,
+     which is why the gap check alone could never have caught it.
+   - The *local* edge index of each harbour within its piece (`{0,3}` on a
+     2-harbour piece, centre `{2}` on a 1-harbour piece) is relative to the
+     piece itself, so the offset above does not disturb it. Still read off the
+     photo rather than confirmed on the table.
 2. **Robber tax detail — implemented as read.** "highest paying hexagon" is the
    single adjacent hex with the largest expected card return across the player's
    settlements; the tax is half its raw pips, applied once the player holds two
@@ -247,8 +256,15 @@ a divisor of 13, which is impossible — 13 would put most boards far above 1.0.
    so this is a one-line change.
 5. **Order within a 2-harbour frame piece — assumed.** §3.1's table lists each
    pair as "3:1 + resource 2:1"; that listed order is taken as left-to-right, so
-   the 3:1 sits at local edge 0 and the 2:1 at local edge 3. Same photo that
-   would settle the `{0,3}` vs `{1,4}` phase question settles this one.
+   the 3:1 sits at local edge 0 and the 2:1 at local edge 3. Unlike the piece
+   start offset, which the user has now settled, this one is still read off the
+   photo. It only matters for non-alternating piece orders.
+6. **Setup roads — a heuristic, not from the articles.** Neither article covers
+   roads; the app places one per settlement because you cannot set a board up
+   without them. A setup road is treated as an option on a future settlement
+   and scored by the best site it reaches (`chooseRoad` in
+   `src/placement.ts`) — common location score only, judged against the board
+   as it stands at that pick. It does not feed CIBI+.
 
 ### Where our numbers land vs the articles
 
