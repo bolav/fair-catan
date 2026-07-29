@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { hashSeed } from './board'
+import { decodeBoardCode, encodeBoardCode } from './code'
 import { evaluateSeed, type SweepMode, type SweepResult } from './generate'
-import type { BoardEvaluation } from './fairness'
+import { RESOURCE_VALUES, type ResourceValues } from './scoring'
 import type { SweepMessage, SweepRequest } from './worker/sweep.worker'
 import { BoardView } from './ui/BoardView'
 import { CibiPanel } from './ui/CibiPanel'
 import { PlayerPanel } from './ui/PlayerPanel'
 import { SetupSheet } from './ui/SetupSheet'
+import { ValuesPanel } from './ui/ValuesPanel'
 
 const DEFAULT_SEED = 'catan'
 const DEFAULT_BOARDS = 20_000
@@ -31,7 +33,6 @@ const LAYER_LABELS: Array<{ key: keyof Layers; label: string }> = [
 ]
 
 interface Shown {
-  evaluation: BoardEvaluation
   boardSeed: number
   stats?: SweepResult['stats']
 }
@@ -44,10 +45,16 @@ export default function App() {
   const [layers, setLayers] = useState<Layers>({ settlements: true, roads: true, cards: true })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
-  const [shown, setShown] = useState<Shown>(() => {
-    const boardSeed = hashSeed(DEFAULT_SEED)
-    return { evaluation: evaluateSeed(boardSeed), boardSeed }
-  })
+  const [values, setValues] = useState<ResourceValues>({ ...RESOURCE_VALUES })
+  const [shown, setShown] = useState<Shown>(() => ({ boardSeed: hashSeed(DEFAULT_SEED) }))
+  const [codeInput, setCodeInput] = useState('')
+  const [codeError, setCodeError] = useState(false)
+
+  // Scoring is a pure function of the board seed and the resource values, so
+  // the evaluation is derived rather than stored — moving a slider re-scores
+  // the board on the spot, and there is no way for the two to drift apart.
+  const evaluation = useMemo(() => evaluateSeed(shown.boardSeed, values), [shown.boardSeed, values])
+  const boardCode = encodeBoardCode(shown.boardSeed)
 
   const workerRef = useRef<Worker | null>(null)
 
@@ -59,8 +66,21 @@ export default function App() {
   useEffect(() => () => workerRef.current?.terminate(), [])
 
   const showSeed = useCallback((boardSeed: number) => {
-    setShown({ evaluation: evaluateSeed(boardSeed), boardSeed })
+    setShown({ boardSeed })
+    setCodeInput('')
+    setCodeError(false)
   }, [])
+
+  const loadCode = useCallback(() => {
+    const seed = decodeBoardCode(codeInput)
+    if (seed === null) {
+      setCodeError(true)
+      return
+    }
+    setShown({ boardSeed: seed })
+    setCodeInput('')
+    setCodeError(false)
+  }, [codeInput])
 
   const search = useCallback(() => {
     workerRef.current?.terminate()
@@ -79,20 +99,16 @@ export default function App() {
       }
       const winner = message.result.results[0]
       if (winner) {
-        setShown({
-          evaluation: winner,
-          boardSeed: winner.boardSeed,
-          stats: message.result.stats,
-        })
+        setShown({ boardSeed: winner.boardSeed, stats: message.result.stats })
       }
       setRunning(false)
       worker.terminate()
       workerRef.current = null
     }
 
-    const request: SweepRequest = { seed: hashSeed(seedText), boards, mode }
+    const request: SweepRequest = { seed: hashSeed(seedText), boards, mode, values }
     worker.postMessage(request)
-  }, [seedText, boards, mode])
+  }, [seedText, boards, mode, values])
 
   const stop = useCallback(() => {
     workerRef.current?.terminate()
@@ -100,7 +116,7 @@ export default function App() {
     setRunning(false)
   }, [])
 
-  const { evaluation, boardSeed, stats } = shown
+  const { boardSeed, stats } = shown
 
   return (
     <div className="app">
@@ -156,6 +172,30 @@ export default function App() {
         <button onClick={() => showSeed(Math.floor(Math.random() * 0x100000000) >>> 0)} disabled={running}>
           Single random board
         </button>
+        <div className="field">
+          <label htmlFor="code">Board code</label>
+          <div className="code-field">
+            <input
+              id="code"
+              value={codeInput}
+              placeholder={boardCode}
+              spellCheck={false}
+              autoComplete="off"
+              size={10}
+              aria-invalid={codeError}
+              onChange={(e) => {
+                setCodeInput(e.target.value)
+                setCodeError(false)
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') loadCode()
+              }}
+            />
+            <button onClick={loadCode} disabled={running || codeInput.trim() === ''}>
+              Load
+            </button>
+          </div>
+        </div>
         <fieldset className="layers">
           <legend>Show</legend>
           {LAYER_LABELS.map(({ key, label }) => (
@@ -176,6 +216,11 @@ export default function App() {
             </div>
             <span className="hint">{Math.round(progress * 100)}% of {boards.toLocaleString()} boards</span>
           </div>
+        )}
+        {codeError && (
+          <span className="hint error">
+            Not a board code — check the characters. It should look like {boardCode}.
+          </span>
         )}
         {!running && stats && (
           <span className="hint">
@@ -222,6 +267,7 @@ export default function App() {
         </div>
         <div>
           <CibiPanel evaluation={evaluation} />
+          <ValuesPanel values={values} onChange={setValues} disabled={running} />
           <SetupSheet
             board={evaluation.board}
             draft={evaluation.draft}

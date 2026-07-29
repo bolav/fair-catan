@@ -1,6 +1,7 @@
 // Everything needed to physically build the generated board on the table.
 
 import { geometry, type Board, type Hex } from '../board'
+import { encodeBoardCode } from '../code'
 import type { DraftResult } from '../placement'
 import { PLAYER_COLORS } from './BoardView'
 
@@ -140,8 +141,15 @@ export function SetupSheet({ board, draft, seed, show = SHEET_SHOW_ALL }: SetupS
         </>
       )}
 
-      <p className="note">
-        Seed <code>{seed}</code> — reproduces this exact board, frame included.
+      <p className="note board-code">
+        Board code <code>{encodeBoardCode(seed)}</code>
+        <button
+          className="link"
+          onClick={() => void navigator.clipboard?.writeText(encodeBoardCode(seed))}
+        >
+          copy
+        </button>
+        — paste it back into Board code to rebuild this exact island, frame included.
       </p>
     </section>
   )

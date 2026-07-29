@@ -19,8 +19,8 @@ Verify in one go:
 
 ```
 pnpm exec tsc -b     # clean
-pnpm test            # 47 passing
-pnpm test:e2e        # 10 passing, needs Chromium
+pnpm test            # 54 passing
+pnpm test:e2e        # 19 passing, needs Chromium
 pnpm build           # clean
 pnpm dev             # serves on 5173, bound to all interfaces
 ```
@@ -88,9 +88,9 @@ README for links to the originals.
    round the island, so any previously recorded distributions are stale — rerun
    `pnpm calibrate` before comparing.
 
-2. **`TODO.md` §6 nice-to-haves**, in the order listed there: seed
-   import/export as a short string, sliders for the resource relative values,
-   and a step-by-step draft animation.
+2. **The last `TODO.md` §6 nice-to-have**: a step-by-step draft animation,
+   like the article's GIFs. The other two are done — board codes
+   (`src/code.ts`) and the resource value sliders (`src/ui/ValuesPanel.tsx`).
 
 ---
 

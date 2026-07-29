@@ -202,7 +202,85 @@ test.describe('the Show toggles', () => {
     await expect(sheet).not.toContainText('settles')
     // The board build instructions always stay.
     await expect(sheet).toContainText('Build the sea frame first')
-    await expect(sheet).toContainText('reproduces this exact board')
+    await expect(sheet).toContainText('rebuild this exact island')
+  })
+})
+
+test.describe('board codes', () => {
+  const code = (page: Page) => page.getByLabel('Board code', { exact: true })
+
+  test('shows a code for the current board and reloads it', async ({ page }) => {
+    await board(page)
+    const shown = await page.locator('.board-code code').innerText()
+    expect(shown).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/)
+
+    // A different board, then back via the code.
+    const before = await page.locator('.hero-value').innerText()
+    await page.getByRole('button', { name: 'Single random board' }).click()
+    await expect(page.locator('.board-code code')).not.toHaveText(shown)
+
+    await code(page).fill(shown)
+    await page.getByRole('button', { name: 'Load', exact: true }).click()
+    await expect(page.locator('.board-code code')).toHaveText(shown)
+    await expect(page.locator('.hero-value')).toHaveText(before)
+  })
+
+  test('rejects a mistyped code instead of loading another board', async ({ page }) => {
+    await board(page)
+    const shown = await page.locator('.board-code code').innerText()
+    const bare = shown.replace('-', '')
+    // Bump one character to something else in the alphabet.
+    const wrong = (bare[0] === 'Z' ? 'Y' : 'Z') + bare.slice(1)
+
+    await code(page).fill(wrong)
+    await page.getByRole('button', { name: 'Load', exact: true }).click()
+    await expect(page.getByText('Not a board code')).toBeVisible()
+    // The board did not move.
+    await expect(page.locator('.board-code code')).toHaveText(shown)
+  })
+
+  test('accepts a code typed loosely', async ({ page }) => {
+    await board(page)
+    const shown = await page.locator('.board-code code').innerText()
+    await page.getByRole('button', { name: 'Single random board' }).click()
+
+    await code(page).fill(shown.replace('-', ' ').toLowerCase())
+    await code(page).press('Enter')
+    await expect(page.locator('.board-code code')).toHaveText(shown)
+  })
+})
+
+test.describe('resource value sliders', () => {
+  test('re-score the board without changing it', async ({ page }) => {
+    await board(page)
+    const codeBefore = await page.locator('.board-code code').innerText()
+    const cibiBefore = await page.locator('.hero-value').innerText()
+
+    const ore = page.getByLabel('ore', { exact: true })
+    await expect(ore).toHaveValue('1.329')
+    await ore.fill('0.2')
+
+    // Same island, different score.
+    await expect(page.locator('.board-code code')).toHaveText(codeBefore)
+    await expect(page.locator('.hero-value')).not.toHaveText(cibiBefore)
+    await expect(page.getByText('was 1.329')).toBeVisible()
+    await expect(page.getByText('no longer comparable', { exact: false })).toBeVisible()
+  })
+
+  test('reset returns the article figures and the original score', async ({ page }) => {
+    await board(page)
+    const cibiBefore = await page.locator('.hero-value').innerText()
+    const reset = page.getByRole('button', { name: /Reset to the article/ })
+    await expect(reset).toBeDisabled()
+
+    await page.getByLabel('wheat', { exact: true }).fill('0.1')
+    await expect(page.locator('.hero-value')).not.toHaveText(cibiBefore)
+    await expect(reset).toBeEnabled()
+
+    await reset.click()
+    await expect(page.getByLabel('wheat', { exact: true })).toHaveValue('1.35')
+    await expect(page.locator('.hero-value')).toHaveText(cibiBefore)
+    await expect(reset).toBeDisabled()
   })
 })
 

@@ -333,6 +333,16 @@ about 30s in the worker; ~88,000/s for the layout-only metrics.
 
 ## 6. Nice to have (only after the above)
 
-- Import/export a board as a short seed string.
-- Slider UI for the resource relative values (the article invites exactly this).
+- ✔ **Import/export a board as a short seed string.** `src/code.ts`. A board is
+  entirely determined by its 32-bit board seed, so the code is that number in
+  Crockford base 32 plus a position-weighted check character: `1G8Y-A5M9`.
+  Base 32 rather than 36 so that O/0 and I/1 can be folded on input without
+  colliding with real symbols; the check character so a mistyped code fails
+  loudly instead of quietly loading a different board.
+- ✔ **Slider UI for the resource relative values.** `src/ui/ValuesPanel.tsx`.
+  Scoring was already parameterised on them end to end (`buildScoringIndex`,
+  `evaluateBoard`, `sweep`), so this only had to thread them through the worker
+  and derive the evaluation instead of storing it. Moving a slider re-scores
+  the board on the spot; it does not re-run the sweep, because results found
+  under one set of values are not comparable to another.
 - "Show the draft step by step" animation, like the article's GIFs.
