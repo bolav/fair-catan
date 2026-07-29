@@ -11,6 +11,8 @@ import {
   pips,
   slotForEdge,
   type Board,
+  type Geometry,
+  type Harbour,
   type HarbourKind,
   type Resource,
 } from '../board'
@@ -128,6 +130,28 @@ const outline = {
   strokeLinejoin: 'round' as const,
 }
 
+/**
+ * Where each harbour marker lands, in svg px, and how big it is. Exported so
+ * `pnpm render-check` can test the real placement across all 120 frame
+ * arrangements instead of a copy of it that goes stale.
+ */
+export function harbourAnchors(
+  harbours: readonly Harbour[],
+  geom: Geometry = geometry(),
+): { at: Point; width: number; height: number }[] {
+  const ring = geom.coastalRingNodes.map((id) => geom.nodes[id])
+  const sides = frameSides(ring)
+  return harbours.map((harbour) => {
+    const side = sides[slotForEdge(harbour.slot, ring.length)]
+    const mid = mix(geom.nodes[harbour.nodes[0]], geom.nodes[harbour.nodes[1]])
+    return {
+      at: scale(along(mid, side.normal, side.distance - SEA / 2 - dot(mid, side.normal))),
+      width: HARBOUR_W,
+      height: HARBOUR_H,
+    }
+  })
+}
+
 export interface BoardViewProps {
   board: Board
   draft: DraftResult
@@ -184,6 +208,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
               strokeWidth={2}
             />
             <text
+              data-role="frame-letter"
               x={label.x}
               y={label.y}
               textAnchor="middle"
@@ -242,6 +267,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
               strokeLinecap="round"
             />
             <line
+              data-role="road"
               x1={start.x}
               y1={start.y}
               x2={end.x}
@@ -269,6 +295,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
         return (
           <g key={`label-${hex.q},${hex.r}`}>
             <text
+              data-role="terrain"
               x={center.x}
               y={center.y - 26}
               textAnchor="middle"
@@ -327,6 +354,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
             <line x1={at.x} y1={at.y} x2={a.x} y2={a.y} stroke="var(--sea-line)" strokeWidth={2} />
             <line x1={at.x} y1={at.y} x2={b.x} y2={b.y} stroke="var(--sea-line)" strokeWidth={2} />
             <rect
+              data-role="harbour"
               x={at.x - HARBOUR_W / 2}
               y={at.y - HARBOUR_H / 2}
               width={HARBOUR_W}
@@ -361,6 +389,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
             {/* A second ring marks the settlement that pays out at setup. */}
             {pays && (
               <circle
+                data-role="payout"
                 cx={p.x}
                 cy={p.y}
                 r={17}
@@ -370,6 +399,7 @@ export function BoardView({ board, draft }: BoardViewProps) {
               />
             )}
             <circle
+              data-role="settlement"
               cx={p.x}
               cy={p.y}
               r={12}

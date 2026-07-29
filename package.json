@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "calibrate": "node scripts/run-ts.mjs src/tools/calibrate.ts",
     "maximise": "node scripts/run-ts.mjs src/tools/maximise.ts",
     "geometry-check": "node scripts/run-ts.mjs src/tools/geometry-check.ts",

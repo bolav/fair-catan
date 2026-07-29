@@ -7,6 +7,9 @@ tsconfig.tsbuildinfo
 # Screenshots produced by scripts/shoot.mjs and scripts/zoom.mjs — regenerable.
 shots/
 
+test-results/
+playwright-report/
+
 # Reference material the spec was recovered from: saved copies of the two
 # Board Game Analysis articles and their images, plus the frame photo. Not
 # ours to redistribute, and the photo is personal. See README for the links.

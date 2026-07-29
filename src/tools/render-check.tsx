@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { frameArrangements, geometry, harboursFor, makeRng, generateFullBoard } from '../board'
 import { buildScoringIndex } from '../scoring'
 import { runDraft } from '../placement'
-import { BoardView } from '../ui/BoardView'
+import { BoardView, harbourAnchors } from '../ui/BoardView'
 
 declare const process: { argv: string[]; exitCode?: number }
 
@@ -30,32 +30,24 @@ check('hex tiles', count(/<title>(wood|brick|sheep|wheat|ore|desert)/g), 19)
 check('number tokens', count(/<circle[^>]*r="15"/g), 18)
 check('harbour markers', count(/<rect/g), 9)
 check('settlement markers', count(/<circle[^>]*r="12"/g), 8)
+check('payout rings', count(/<circle[^>]*r="17"/g), 4)
+check('setup roads', count(/road, placed with pick/g), 8)
 check('frame piece letters', count(/Frame piece/g), 6)
 
 // --- marker collisions, across every arrangement the generator can pick -----
-const S = 46
-const SEA = 1.0
+// Uses BoardView's own placement, so this cannot drift away from what renders.
 const geom = geometry()
-const unit = (p: { x: number; y: number }) => {
-  const len = Math.hypot(p.x, p.y) || 1
-  return { x: p.x / len, y: p.y / len }
-}
 
 let closest = Infinity
 let closestWhere = ''
 for (const frame of frameArrangements()) {
-  const centres = harboursFor(frame, geom).map((harbour) => {
-    const [a, b] = harbour.nodes.map((id) => geom.nodes[id])
-    const mid = { x: ((a.x + b.x) / 2) * S, y: ((a.y + b.y) / 2) * S }
-    const d = unit(mid)
-    return { x: mid.x + d.x * SEA * S * 0.55, y: mid.y + d.y * SEA * S * 0.55 }
-  })
-  for (let i = 0; i < centres.length; i++) {
-    for (let j = i + 1; j < centres.length; j++) {
-      // Two 54x22 rects clear each other if either gap exceeds the half-sums.
-      const dx = Math.abs(centres[i].x - centres[j].x)
-      const dy = Math.abs(centres[i].y - centres[j].y)
-      const clearance = Math.max(dx - 54, dy - 22)
+  const markers = harbourAnchors(harboursFor(frame, geom), geom)
+  for (let i = 0; i < markers.length; i++) {
+    for (let j = i + 1; j < markers.length; j++) {
+      // Two rects clear each other if either gap exceeds the summed sizes.
+      const dx = Math.abs(markers[i].at.x - markers[j].at.x)
+      const dy = Math.abs(markers[i].at.y - markers[j].at.y)
+      const clearance = Math.max(dx - markers[i].width, dy - markers[i].height)
       if (clearance < closest) {
         closest = clearance
         closestWhere = frame.map((p) => p.id).join('')
