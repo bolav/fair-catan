@@ -42,8 +42,14 @@ export const HARBOUR_2_1_MULTIPLIER = 1.4
 export const HARBOUR_3_1_MULTIPLIER = 1.1
 /** Per distinct roll number the player has settled (max +0.9 per settlement). */
 export const NUMBER_BONUS = 0.3
-/** Per distinct resource the player has settled (max +0.93 per settlement). */
-export const RESOURCE_BONUS = 0.31
+/**
+ * Value of access to one resource. Direct production earns the full amount;
+ * a missing resource earns only the fraction obtainable by trading one card
+ * at the player's best maritime rate (1/4 with the bank, 1/3 or 1/2 at a
+ * harbour). This makes a diverse portfolio materially better without treating
+ * a missing resource as completely unavailable.
+ */
+export const RESOURCE_ACCESS_VALUE = 0.5
 /** Fraction of the player's highest expected card return lost to the robber. */
 export const ROBBER_TAX_FRACTION = 0.5
 
@@ -57,6 +63,8 @@ export type ResourceValues = Readonly<Record<Resource, number>>
  */
 export interface Tuning {
   values: ResourceValues
+  /** Score awarded per unit of direct/trade-adjusted resource access. */
+  resourceAccessWeight: number
   /** Score multiplier for production matching a settled 2:1 harbour. */
   harbour2To1: number
   /** Score multiplier for all production when settled on a 3:1 harbour. */
@@ -67,6 +75,7 @@ export interface Tuning {
 
 export const DEFAULT_TUNING: Tuning = {
   values: RESOURCE_VALUES,
+  resourceAccessWeight: RESOURCE_ACCESS_VALUE,
   harbour2To1: HARBOUR_2_1_MULTIPLIER,
   harbour3To1: HARBOUR_3_1_MULTIPLIER,
   robberTax: ROBBER_TAX_FRACTION,
@@ -81,6 +90,7 @@ export interface ScoringIndex {
   harbour2To1: number
   harbour3To1: number
   robberTax: number
+  resourceAccessWeight: number
   /** node id -> adjacent hex indices */
   nodeHexes: number[][]
   /** node id -> harbour kinds reachable from it (0 or 1 in practice) */
@@ -92,6 +102,7 @@ export interface ScoringIndex {
 export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): ScoringIndex {
   const {
     values = RESOURCE_VALUES,
+    resourceAccessWeight = RESOURCE_ACCESS_VALUE,
     harbour2To1 = HARBOUR_2_1_MULTIPLIER,
     harbour3To1 = HARBOUR_3_1_MULTIPLIER,
     robberTax = ROBBER_TAX_FRACTION,
@@ -116,6 +127,7 @@ export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): S
     hexes: board.hexes,
     hexPips,
     values,
+    resourceAccessWeight,
     harbour2To1,
     harbour3To1,
     robberTax,
@@ -138,6 +150,10 @@ export interface PlayerScore {
   base: number
   numberBonus: number
   resourceBonus: number
+  /** Sum of direct (1) and trade-only (1/rate) access across all five resources. */
+  resourceAccess: number
+  /** Best maritime rate available for acquiring each resource; 1 means direct production. */
+  tradeRates: Record<ProducingResource, 1 | 2 | 3 | 4>
   /** Positive number that has already been subtracted from `total`. */
   robberTax: number
   multipliers: Record<ProducingResource, number>
@@ -181,9 +197,11 @@ export function playerScore(index: ScoringIndex, settlements: readonly number[])
   const byResource = emptyByResource()
   const numbers = new Set<number>()
   const resources = new Set<ProducingResource>()
+  const settledHarbours = new Set<HarbourKind>()
   let highestReturn = 0
 
   for (const node of settlements) {
+    for (const kind of index.nodeHarbours[node]) settledHarbours.add(kind)
     for (const hi of index.nodeHexes[node]) {
       const hex = index.hexes[hi]
       if (hex.resource === 'desert') continue
@@ -203,7 +221,29 @@ export function playerScore(index: ScoringIndex, settlements: readonly number[])
   }
 
   const numberBonus = NUMBER_BONUS * numbers.size
-  const resourceBonus = RESOURCE_BONUS * resources.size
+  const hasGenericHarbour = settledHarbours.has('generic')
+  const hasTradableProduction = resources.size > 0
+  const tradeRates = {} as Record<ProducingResource, 1 | 2 | 3 | 4>
+  let resourceAccess = 0
+  for (const target of PRODUCING_RESOURCES) {
+    let rate: 1 | 2 | 3 | 4
+    if (resources.has(target)) {
+      rate = 1
+    } else if (
+      hasTradableProduction &&
+      [...resources].some((source) => settledHarbours.has(source))
+    ) {
+      // A matching 2:1 port applies to the resource paid, not the one received.
+      rate = 2
+    } else if (hasTradableProduction && hasGenericHarbour) {
+      rate = 3
+    } else {
+      rate = 4
+    }
+    tradeRates[target] = rate
+    resourceAccess += 1 / rate
+  }
+  const resourceBonus = index.resourceAccessWeight * resourceAccess
   const robberTax = settlements.length >= 2 ? index.robberTax * highestReturn : 0
 
   return {
@@ -212,6 +252,8 @@ export function playerScore(index: ScoringIndex, settlements: readonly number[])
     base,
     numberBonus,
     resourceBonus,
+    resourceAccess,
+    tradeRates,
     robberTax,
     multipliers,
     distinctNumbers: numbers.size,

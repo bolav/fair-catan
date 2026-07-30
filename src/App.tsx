@@ -70,6 +70,7 @@ export default function App() {
   const [progress, setProgress] = useState(0)
   const [tuning, setTuning] = useState<Tuning>(() => ({
     values: { ...DEFAULT_TUNING.values },
+    resourceAccessWeight: DEFAULT_TUNING.resourceAccessWeight,
     harbour2To1: DEFAULT_TUNING.harbour2To1,
     harbour3To1: DEFAULT_TUNING.harbour3To1,
     robberTax: DEFAULT_TUNING.robberTax,

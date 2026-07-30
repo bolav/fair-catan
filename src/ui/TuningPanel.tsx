@@ -25,6 +25,7 @@ const TERRAIN: Record<ProducingResource, string> = {
 export function isDefaultTuning(tuning: Tuning): boolean {
   return (
     tuning.robberTax === DEFAULT_TUNING.robberTax &&
+    tuning.resourceAccessWeight === DEFAULT_TUNING.resourceAccessWeight &&
     tuning.harbour2To1 === DEFAULT_TUNING.harbour2To1 &&
     tuning.harbour3To1 === DEFAULT_TUNING.harbour3To1 &&
     PRODUCING_RESOURCES.every((r) => tuning.values[r] === DEFAULT_TUNING.values[r])
@@ -80,6 +81,40 @@ export function TuningPanel({ tuning, onChange, disabled }: TuningPanelProps) {
             </span>
           </div>
         ))}
+      </div>
+
+      <p className="note">
+        Resource access rewards variety. Direct production counts fully; missing resources count
+        at the fraction obtainable through the player&rsquo;s best bank or harbour trade. Set this
+        to zero to ignore resource diversity.
+      </p>
+
+      <div className="sliders">
+        <div className="slider-row">
+          <label className="slider-label" htmlFor="value-resource-access">
+            resource access
+          </label>
+          <input
+            id="value-resource-access"
+            type="range"
+            min={0}
+            max={2}
+            step={0.01}
+            value={tuning.resourceAccessWeight}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange({ ...tuning, resourceAccessWeight: Number(e.target.value) })
+            }
+          />
+          <span className="slider-value">
+            {tuning.resourceAccessWeight.toFixed(2)}
+            {tuning.resourceAccessWeight !== DEFAULT_TUNING.resourceAccessWeight && (
+              <span className="slider-was">
+                {' '}was {DEFAULT_TUNING.resourceAccessWeight.toFixed(2)}
+              </span>
+            )}
+          </span>
+        </div>
       </div>
 
       <p className="note">

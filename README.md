@@ -53,7 +53,7 @@ The four `node scripts/…` ones need a dev server running.
 | file | what it holds |
 |------|---------------|
 | `src/board.ts` | tile/number pools, pips, seeded RNG, pointy-top geometry (54 nodes / 72 edges / 30-edge coastal ring), the 6 frame pieces and their 120 arrangements |
-| `src/scoring.ts` | `Tuning` (resource values + robber fraction), common location score, player-aware score |
+| `src/scoring.ts` | `Tuning` (resource values, resource-access weight, and robber fraction), common location score, player-aware score including bank/harbour access to missing resources |
 | `src/placement.ts` | the 1-2-3-4-4-3-2-1 greedy snake draft, each settlement's setup road, each player's opening hand |
 | `src/fairness.ts` | fairness measure, the four balance metrics, the normalising divisors, CIBI+ |
 | `src/generate.ts` | seeded sweep keeping the best/worst boards, with progress and cancel |
@@ -87,6 +87,7 @@ or guessed, it is a single exported constant, so each is a one-line change.
 | Normalising divisors are attainable maxima, not 100M-run maxima | `src/fairness.ts` | two of the four reproduce the articles' stated values exactly |
 | A setup road is worth the best site it reaches, judged at that pick | `src/placement.ts` | `chooseRoad`; roads are in neither article and do not feed CIBI+ |
 | Fairness is the player spread over 15 | `src/fairness.ts` | every published Fairness Board Measure is an exact multiple of 1/150 |
+| Missing resources are valued at their maritime conversion rate | `src/scoring.ts` | direct access counts fully; bank 4:1, generic harbour 3:1, and an export resource harbour 2:1 count proportionally |
 
 The sea frame is **not** among these. Piece order, where a piece starts on the
 coast (`PIECE_START_OFFSET`) and the harbour offsets within a piece were all

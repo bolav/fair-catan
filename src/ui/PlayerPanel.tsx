@@ -62,7 +62,7 @@ export function PlayerPanel({ board, draft }: { board: Board; draft: DraftResult
                 <th key={r}>{r}</th>
               ))}
               <th>Numbers</th>
-              <th>Resources</th>
+              <th>Resource access</th>
               <th>Robber</th>
               <th>Total</th>
             </tr>
@@ -83,7 +83,13 @@ export function PlayerPanel({ board, draft }: { board: Board; draft: DraftResult
                   </td>
                 ))}
                 <td>+{score.numberBonus.toFixed(2)}</td>
-                <td>+{score.resourceBonus.toFixed(2)}</td>
+                <td
+                  title={PRODUCING_RESOURCES.map((r) =>
+                    score.tradeRates[r] === 1 ? `${r}: direct` : `${r}: ${score.tradeRates[r]}:1 trade`,
+                  ).join(', ')}
+                >
+                  +{score.resourceBonus.toFixed(2)}
+                </td>
                 <td>−{score.robberTax.toFixed(2)}</td>
                 <td className="total">{score.total.toFixed(2)}</td>
               </tr>
@@ -98,6 +104,12 @@ export function PlayerPanel({ board, draft }: { board: Board; draft: DraftResult
           {settled.map(({ player, harbours }) => `P${player + 1}: ${harbours.join(', ')}. `)}
         </p>
       )}
+      <p className="note" style={{ marginTop: 12 }}>
+        Resource access values direct production fully. Missing resources are discounted to what
+        the player can obtain by maritime trade: 4:1 with the bank, 3:1 at a generic harbour, or
+        2:1 when paying with a resource whose harbour they control. Hover the access score for each
+        player&rsquo;s rates.
+      </p>
     </section>
   )
 }

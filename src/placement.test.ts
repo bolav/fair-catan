@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { generateFullBoard, geometry, makeRng } from './board'
+import { generateFullBoard, geometry, makeRng, PRODUCING_RESOURCES } from './board'
 import { decodeBoardCode } from './code'
 import { boardFromSeed } from './generate'
 import { buildScoringIndex, playerScore } from './scoring'
@@ -177,12 +177,66 @@ describe('playerScore', () => {
     expect(playerScore(index, [first, second]).robberTax).toBeGreaterThan(0)
   })
 
-  it('caps the per-settlement bonuses at +0.9 and +0.93', () => {
+  it('caps the number bonus and values missing resources at the bank trade rate', () => {
     const index = buildScoringIndex(boards[0])
     for (let node = 0; node < index.geom.nodes.length; node++) {
+      if (index.nodeHarbours[node].length > 0) continue
       const score = playerScore(index, [node])
       expect(score.numberBonus).toBeLessThanOrEqual(0.9 + 1e-9)
-      expect(score.resourceBonus).toBeLessThanOrEqual(0.93 + 1e-9)
+      expect(score.resourceAccess).toBeLessThanOrEqual(5)
+      for (const resource of PRODUCING_RESOURCES) {
+        expect(score.tradeRates[resource]).toBe(
+          score.byResource[resource] > 0 ? 1 : 4,
+        )
+      }
+    }
+  })
+
+  it('uses a generic harbour before the bank for missing resources', () => {
+    const board = boards[0]
+    const harbour = board.harbours.find((candidate) => candidate.kind === 'generic')!
+    const score = playerScore(buildScoringIndex(board), [harbour.nodes[0]])
+    for (const resource of PRODUCING_RESOURCES) {
+      expect(score.tradeRates[resource]).toBe(score.byResource[resource] > 0 ? 1 : 3)
+    }
+  })
+
+  it('can turn the resource-access contribution off', () => {
+    const board = boards[0]
+    const score = playerScore(buildScoringIndex(board, { resourceAccessWeight: 0 }), [0])
+    expect(score.resourceAccess).toBeGreaterThan(0)
+    expect(score.resourceBonus).toBe(0)
+  })
+
+  it('can export production through a matching 2:1 harbour', () => {
+    const board = boards.find((candidate) =>
+      candidate.harbours.some(
+        (harbour) =>
+          harbour.kind !== 'generic' &&
+          harbour.nodes.some((node) =>
+            geometry().nodes[node].hexes.some(
+              (hex) => candidate.hexes[hex].resource === harbour.kind,
+            ),
+          ),
+      ),
+    )!
+    const harbour = board.harbours.find(
+      (candidate) =>
+        candidate.kind !== 'generic' &&
+        candidate.nodes.some((node) =>
+          geometry().nodes[node].hexes.some(
+            (hex) => board.hexes[hex].resource === candidate.kind,
+          ),
+        ),
+    )!
+    const node = harbour.nodes.find((candidate) =>
+      geometry().nodes[candidate].hexes.some(
+        (hex) => board.hexes[hex].resource === harbour.kind,
+      ),
+    )!
+    const score = playerScore(buildScoringIndex(board), [node])
+    for (const resource of PRODUCING_RESOURCES) {
+      expect(score.tradeRates[resource]).toBe(score.byResource[resource] > 0 ? 1 : 2)
     }
   })
 
