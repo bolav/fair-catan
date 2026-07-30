@@ -195,4 +195,40 @@ describe('playerScore', () => {
       }
     }
   })
+
+  it('uses configurable 2:1 and 3:1 harbour multipliers', () => {
+    const board = boards.find((candidate) =>
+      candidate.harbours.some((harbour) =>
+        harbour.nodes.some((node) =>
+          geometry().nodes[node].hexes.some(
+            (hex) => candidate.hexes[hex].resource === harbour.kind,
+          ),
+        ),
+      ),
+    )!
+    const specific = board.harbours.find(
+      (harbour) =>
+        harbour.kind !== 'generic' &&
+        harbour.nodes.some((node) =>
+          geometry().nodes[node].hexes.some(
+            (hex) => board.hexes[hex].resource === harbour.kind,
+          ),
+        ),
+    )!
+    const specificNode = specific.nodes.find((node) =>
+      geometry().nodes[node].hexes.some(
+        (hex) => board.hexes[hex].resource === specific.kind,
+      ),
+    )!
+    const genericNode = board.harbours.find((harbour) => harbour.kind === 'generic')!.nodes[0]
+
+    const defaultIndex = buildScoringIndex(board)
+    const tunedIndex = buildScoringIndex(board, { harbour2To1: 2, harbour3To1: 1.5 })
+    expect(playerScore(tunedIndex, [specificNode]).total).toBeGreaterThan(
+      playerScore(defaultIndex, [specificNode]).total,
+    )
+    expect(playerScore(tunedIndex, [genericNode]).total).toBeGreaterThan(
+      playerScore(defaultIndex, [genericNode]).total,
+    )
+  })
 })

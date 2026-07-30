@@ -439,6 +439,21 @@ test.describe('scoring weight sliders', () => {
     await expect(page.locator('.board-code code')).toHaveText(codeBefore)
   })
 
+  test('can adjust both harbour multipliers', async ({ page }) => {
+    await board(page)
+    const codeBefore = await page.locator('.board-code code').innerText()
+    const twoToOne = page.getByLabel('2:1 harbour', { exact: true })
+    const threeToOne = page.getByLabel('3:1 harbour', { exact: true })
+
+    await expect(twoToOne).toHaveValue('1.4')
+    await expect(threeToOne).toHaveValue('1.1')
+    await twoToOne.fill('1.8')
+    await threeToOne.fill('1.5')
+    await expect(page.getByText('was 1.40×')).toBeVisible()
+    await expect(page.getByText('was 1.10×')).toBeVisible()
+    await expect(page.locator('.board-code code')).toHaveText(codeBefore)
+  })
+
   test('the robber need not move CIBI+, and that is not a bug', async ({ page }) => {
     // Only the *spread* between players feeds the fairness half of CIBI+, and
     // the four balance measures are properties of the board alone. When the

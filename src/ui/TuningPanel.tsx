@@ -25,6 +25,8 @@ const TERRAIN: Record<ProducingResource, string> = {
 export function isDefaultTuning(tuning: Tuning): boolean {
   return (
     tuning.robberTax === DEFAULT_TUNING.robberTax &&
+    tuning.harbour2To1 === DEFAULT_TUNING.harbour2To1 &&
+    tuning.harbour3To1 === DEFAULT_TUNING.harbour3To1 &&
     PRODUCING_RESOURCES.every((r) => tuning.values[r] === DEFAULT_TUNING.values[r])
   )
 }
@@ -81,6 +83,41 @@ export function TuningPanel({ tuning, onChange, disabled }: TuningPanelProps) {
       </div>
 
       <p className="note">
+        Harbour multipliers apply to a player&rsquo;s full production portfolio after they settle
+        on that harbour. A 2:1 harbour affects its matching resource; a 3:1 harbour affects every
+        resource.
+      </p>
+
+      <div className="sliders">
+        {([
+          ['harbour2To1', '2:1 harbour', DEFAULT_TUNING.harbour2To1],
+          ['harbour3To1', '3:1 harbour', DEFAULT_TUNING.harbour3To1],
+        ] as const).map(([key, label, defaultValue]) => (
+          <div className="slider-row" key={key}>
+            <label className="slider-label" htmlFor={`value-${key}`}>
+              {label}
+            </label>
+            <input
+              id={`value-${key}`}
+              type="range"
+              min={1}
+              max={2}
+              step={0.01}
+              value={tuning[key]}
+              disabled={disabled}
+              onChange={(e) => onChange({ ...tuning, [key]: Number(e.target.value) })}
+            />
+            <span className="slider-value">
+              {tuning[key].toFixed(2)}×
+              {tuning[key] !== defaultValue && (
+                <span className="slider-was"> was {defaultValue.toFixed(2)}×</span>
+              )}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      <p className="note">
         And what the robber costs. A player loses this share of their highest-paying hex, from
         their second settlement on. Neither article states the figure; a half is our reading of
         &ldquo;half the highest-paying hexagon&rdquo;. At zero the robber is ignored entirely.
@@ -116,7 +153,12 @@ export function TuningPanel({ tuning, onChange, disabled }: TuningPanelProps) {
 
       <div className="slider-actions">
         <button
-          onClick={() => onChange({ values: { ...DEFAULT_TUNING.values }, robberTax: DEFAULT_TUNING.robberTax })}
+          onClick={() =>
+            onChange({
+              ...DEFAULT_TUNING,
+              values: { ...DEFAULT_TUNING.values },
+            })
+          }
           disabled={disabled || !modified}
         >
           Reset to the article&rsquo;s values

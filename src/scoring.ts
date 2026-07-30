@@ -57,12 +57,18 @@ export type ResourceValues = Readonly<Record<Resource, number>>
  */
 export interface Tuning {
   values: ResourceValues
+  /** Score multiplier for production matching a settled 2:1 harbour. */
+  harbour2To1: number
+  /** Score multiplier for all production when settled on a 3:1 harbour. */
+  harbour3To1: number
   /** Fraction of the highest-paying hex's return lost to the robber. */
   robberTax: number
 }
 
 export const DEFAULT_TUNING: Tuning = {
   values: RESOURCE_VALUES,
+  harbour2To1: HARBOUR_2_1_MULTIPLIER,
+  harbour3To1: HARBOUR_3_1_MULTIPLIER,
   robberTax: ROBBER_TAX_FRACTION,
 }
 
@@ -72,6 +78,8 @@ export interface ScoringIndex {
   hexes: Hex[]
   hexPips: number[]
   values: ResourceValues
+  harbour2To1: number
+  harbour3To1: number
   robberTax: number
   /** node id -> adjacent hex indices */
   nodeHexes: number[][]
@@ -82,7 +90,12 @@ export interface ScoringIndex {
 }
 
 export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): ScoringIndex {
-  const { values = RESOURCE_VALUES, robberTax = ROBBER_TAX_FRACTION } = tuning
+  const {
+    values = RESOURCE_VALUES,
+    harbour2To1 = HARBOUR_2_1_MULTIPLIER,
+    harbour3To1 = HARBOUR_3_1_MULTIPLIER,
+    robberTax = ROBBER_TAX_FRACTION,
+  } = tuning
   const geom = geometry()
   const hexPips = board.hexes.map((h) => pips(h.number))
   const nodeHexes = geom.nodes.map((n) => n.hexes)
@@ -103,6 +116,8 @@ export function buildScoringIndex(board: Board, tuning: Partial<Tuning> = {}): S
     hexes: board.hexes,
     hexPips,
     values,
+    harbour2To1,
+    harbour3To1,
     robberTax,
     nodeHexes,
     nodeHarbours,
@@ -155,10 +170,10 @@ export function playerScore(index: ScoringIndex, settlements: readonly number[])
     for (const kind of index.nodeHarbours[node]) {
       if (kind === 'generic') {
         for (const r of PRODUCING_RESOURCES) {
-          multipliers[r] = Math.max(multipliers[r], HARBOUR_3_1_MULTIPLIER)
+          multipliers[r] = Math.max(multipliers[r], index.harbour3To1)
         }
       } else {
-        multipliers[kind] = Math.max(multipliers[kind], HARBOUR_2_1_MULTIPLIER)
+        multipliers[kind] = Math.max(multipliers[kind], index.harbour2To1)
       }
     }
   }
