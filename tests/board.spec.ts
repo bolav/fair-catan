@@ -166,6 +166,23 @@ test.describe('the Show toggles', () => {
     await expect(page.locator(roads)).toHaveCount(8)
   })
 
+  test('can show intersection numbers and values independently', async ({ page }) => {
+    await board(page)
+    const labels = page.locator('.board svg [data-role="intersection-label"]')
+    await expect(labels).toHaveCount(0)
+
+    await page.getByLabel('Intersection numbers', { exact: true }).check()
+    await expect(labels).toHaveCount(54)
+    await expect(labels.first()).toContainText('#1')
+
+    await page.getByLabel('Intersection values', { exact: true }).check()
+    await expect(labels.first()).toContainText(/#1 · \d+\.\d/)
+
+    await page.getByLabel('Intersection numbers', { exact: true }).uncheck()
+    await expect(labels.first()).not.toContainText('#1')
+    await expect(labels.first()).toContainText(/\d+\.\d/)
+  })
+
   test('leaves a bare island with all three off', async ({ page }) => {
     await board(page)
     for (const label of ['Settlements', 'Roads', 'Opening cards']) {
@@ -180,8 +197,8 @@ test.describe('the Show toggles', () => {
     await expect(page.locator('.board svg [data-role="harbour"]')).toHaveCount(9)
 
     // And so is the scoring, which is derived from the draft either way.
-    await expect(page.getByText('Spread', { exact: false })).toBeVisible()
-    await expect(page.locator('.hero-value')).toHaveText('0.214')
+    await expect(page.locator('.spread-note')).toBeVisible()
+    await expect(page.locator('.hero-value')).toHaveText('0.203')
   })
 
   test('drops the matching sections of the setup sheet', async ({ page }) => {
@@ -307,6 +324,82 @@ test.describe('board codes', () => {
     await code(page).fill(shown.replace('-', ' ').toLowerCase())
     await code(page).press('Enter')
     await expect(page.locator('.board-code code')).toHaveText(shown)
+  })
+})
+
+test.describe('board locks', () => {
+  test('are independent and travel with the board code', async ({ page }) => {
+    await board(page)
+    const locks = [
+      page.getByLabel('Desert in the middle', { exact: true }),
+      page.getByLabel('Default harbours', { exact: true }),
+      page.getByLabel('Default number order', { exact: true }),
+    ]
+    for (const lock of locks) await expect(lock).not.toBeChecked()
+
+    for (const lock of locks) await lock.check()
+    const lockedCode = await page.locator('.board-code code').innerText()
+
+    for (const lock of locks) await lock.uncheck()
+    await page.getByLabel('Board code', { exact: true }).fill(lockedCode)
+    await page.getByRole('button', { name: 'Load', exact: true }).click()
+    for (const lock of locks) await expect(lock).toBeChecked()
+  })
+})
+
+test.describe('balance details', () => {
+  test('shows the resource pip distribution on hover and click', async ({ page }) => {
+    await board(page)
+    const trigger = page.getByRole('button', {
+      name: 'Resource probability distribution',
+      exact: true,
+    })
+    const popup = page.getByText('Production by resource', { exact: true })
+    const resourcePopover = page.locator('.metric-details', { has: trigger }).locator('.metric-popover')
+
+    await expect(popup).toBeHidden()
+    await trigger.hover()
+    await expect(popup).toBeVisible()
+
+    await trigger.click()
+    await page.mouse.move(0, 0)
+    await expect(popup).toBeVisible()
+    await expect(page.locator('.metric-popover tbody tr')).toHaveCount(5)
+    await expect(resourcePopover).toContainText('Actual')
+    await expect(resourcePopover).toContainText('Expected')
+  })
+
+  test('provides an explanation for every displayed balance value', async ({ page }) => {
+    await board(page)
+    const explanations = [
+      ['Roll number clustering', 'Repeated adjacent roll numbers'],
+      ['Resource clustering', 'Adjacent matching terrain'],
+      ['Harbour return balance', 'Equality of harbour production'],
+      ['Fairness measure', 'Starting-position score spread'],
+      ['CIBI+', 'Combined board score'],
+    ] as const
+
+    await expect(page.locator('.meters .metric-details-trigger')).toHaveCount(6)
+    for (const [label, heading] of explanations) {
+      await page.getByRole('button', { name: label, exact: true }).click()
+      await expect(page.getByText(heading, { exact: true })).toBeVisible()
+      await page.getByRole('button', { name: label, exact: true }).click()
+    }
+  })
+})
+
+test.describe('balance measure weights', () => {
+  test('reweights CIBI+ without changing the board', async ({ page }) => {
+    await board(page)
+    const codeBefore = await page.locator('.board-code code').innerText()
+    const cibiBefore = await page.locator('.hero-value').innerText()
+    const weight = page.locator('#weight-resourceProbabilityDistribution')
+
+    await expect(weight).toHaveValue('1')
+    await weight.fill('5')
+    await expect(page.locator('.board-code code')).toHaveText(codeBefore)
+    await expect(page.locator('.hero-value')).not.toHaveText(cibiBefore)
+    await expect(page.getByRole('button', { name: 'Reset measure weights' })).toBeEnabled()
   })
 })
 

@@ -1,7 +1,7 @@
 // Everything needed to physically build the generated board on the table.
 
 import { useRef } from 'react'
-import { geometry, type Board, type Hex } from '../board'
+import { geometry, type Board, type BoardOptions, type Hex } from '../board'
 import { encodeBoardCode } from '../code'
 import { CopyButton } from './CopyButton'
 import type { DraftResult } from '../placement'
@@ -19,10 +19,17 @@ export interface SetupSheetProps {
   board: Board
   draft: DraftResult
   seed: number
+  boardOptions?: Partial<BoardOptions>
   show?: SetupSheetShow
 }
 
-export function SetupSheet({ board, draft, seed, show = SHEET_SHOW_ALL }: SetupSheetProps) {
+export function SetupSheet({
+  board,
+  draft,
+  seed,
+  boardOptions,
+  show = SHEET_SHOW_ALL,
+}: SetupSheetProps) {
   const geom = geometry()
   const codeRef = useRef<HTMLElement>(null)
 
@@ -145,8 +152,8 @@ export function SetupSheet({ board, draft, seed, show = SHEET_SHOW_ALL }: SetupS
       )}
 
       <p className="note board-code">
-        Board code <code ref={codeRef}>{encodeBoardCode(seed)}</code>
-        <CopyButton text={encodeBoardCode(seed)} source={codeRef} />— paste it back into Board code
+        Board code <code ref={codeRef}>{encodeBoardCode(seed, boardOptions)}</code>
+        <CopyButton text={encodeBoardCode(seed, boardOptions)} source={codeRef} />— paste it back into Board code
         to rebuild this exact island, frame included.
       </p>
     </section>

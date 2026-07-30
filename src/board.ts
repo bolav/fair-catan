@@ -25,6 +25,21 @@ export const TILE_POOL: Resource[] = [
 
 export const NUMBER_POOL = [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12]
 
+/** A–R on the backs of the standard number tokens. */
+export const STANDARD_NUMBER_ORDER = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
+
+export interface BoardOptions {
+  desertCenter: boolean
+  standardHarbours: boolean
+  standardNumbers: boolean
+}
+
+export const DEFAULT_BOARD_OPTIONS: BoardOptions = {
+  desertCenter: false,
+  standardHarbours: false,
+  standardNumbers: false,
+}
+
 /**
  * Expected card return per 36 rolls ("pips"): the number of dots printed on the
  * number token. The desert returns nothing.
@@ -303,7 +318,7 @@ export function slotForEdge(edge: number, ringLength: number): number {
  * one-harbour pieces carry theirs centred at local {2}.
  */
 export const FRAME_PIECES: FramePiece[] = [
-  { id: 'A', label: 'wood 2:1', harbours: [{ local: 2, kind: 'wood' }] },
+  { id: 'A', label: 'ore 2:1', harbours: [{ local: 2, kind: 'ore' }] },
   {
     id: 'B',
     label: '3:1 + wheat 2:1',
@@ -314,22 +329,22 @@ export const FRAME_PIECES: FramePiece[] = [
   },
   {
     id: 'C',
-    label: '3:1 + brick 2:1',
-    harbours: [
-      { local: 0, kind: 'generic' },
-      { local: 3, kind: 'brick' },
-    ],
-  },
-  { id: 'D', label: 'ore 2:1', harbours: [{ local: 2, kind: 'ore' }] },
-  {
-    id: 'E',
     label: '3:1 + sheep 2:1',
     harbours: [
       { local: 0, kind: 'generic' },
       { local: 3, kind: 'sheep' },
     ],
   },
-  { id: 'F', label: '3:1', harbours: [{ local: 2, kind: 'generic' }] },
+  { id: 'D', label: '3:1', harbours: [{ local: 2, kind: 'generic' }] },
+  {
+    id: 'E',
+    label: '3:1 + brick 2:1',
+    harbours: [
+      { local: 0, kind: 'generic' },
+      { local: 3, kind: 'brick' },
+    ],
+  },
+  { id: 'F', label: 'wood 2:1', harbours: [{ local: 2, kind: 'wood' }] },
 ]
 
 export interface Harbour {
@@ -388,10 +403,18 @@ export function randomFrame(random: () => number = Math.random): FramePiece[] {
   return [first, ...shuffle(rest, random)]
 }
 
-/** The standard alternating 2-1-2-1-2-1 order, giving the classic 3-4-3 gaps. */
+/**
+ * The physical default frame, stored in the renderer's clockwise slot order.
+ * Read counter-clockwise from side 1–2, it is:
+ *
+ *   C sheep+3:1, A ore, B wheat+3:1, F wood, E brick+3:1, D 3:1.
+ *
+ * This is also the alternating 2-1-2-1-2-1 order that gives the classic
+ * 3-4-3 harbour gaps.
+ */
 export function standardFrame(): FramePiece[] {
   const byId = new Map(FRAME_PIECES.map((p) => [p.id, p]))
-  return ['B', 'A', 'C', 'D', 'E', 'F'].map((id) => byId.get(id)!)
+  return ['C', 'D', 'E', 'F', 'B', 'A'].map((id) => byId.get(id)!)
 }
 
 // ---------------------------------------------------------------------------
@@ -418,18 +441,65 @@ export function noAdjacentReds(hexes: Hex[]): boolean {
   return true
 }
 
-/** Generate a random board, rejecting layouts with adjacent 6/8 tokens. */
-export function generateBoard(random: () => number = Math.random): Hex[] {
+/**
+ * Hex indices in the standard outside-in number-token spiral. The first token
+ * starts on the top-left corner hex and proceeds counter-clockwise; desert
+ * hexes are skipped, as in the physical A–R setup.
+ */
+export function standardNumberSpiral(): number[] {
+  const coords = hexCoords()
+  const radius = ({ q, r }: { q: number; r: number }) => Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r))
+  const angle = ({ q, r }: { q: number; r: number }) => {
+    const { x, y } = hexCenter(q, r)
+    return Math.atan2(y, x)
+  }
+  const startAngle = angle({ q: 0, r: -2 })
+  const counterClockwiseFromStart = (coord: { q: number; r: number }) =>
+    (startAngle - angle(coord) + Math.PI * 2) % (Math.PI * 2)
+
+  return coords
+    .map((coord, index) => ({ coord, index }))
+    .sort(
+      (a, b) =>
+        radius(b.coord) - radius(a.coord) ||
+        counterClockwiseFromStart(a.coord) - counterClockwiseFromStart(b.coord),
+    )
+    .map(({ index }) => index)
+}
+
+/** Generate a board, rejecting random-number layouts with adjacent 6/8 tokens. */
+export function generateBoard(
+  random: () => number = Math.random,
+  options: Partial<BoardOptions> = {},
+): Hex[] {
+  const settings = { ...DEFAULT_BOARD_OPTIONS, ...options }
   for (;;) {
-    const resources = shuffle(TILE_POOL, random)
+    const coords = hexCoords()
+    const resources = settings.desertCenter
+      ? (() => {
+          const out: Resource[] = shuffle(
+            TILE_POOL.filter((resource) => resource !== 'desert'),
+            random,
+          )
+          out.splice(coords.findIndex(({ q, r }) => q === 0 && r === 0), 0, 'desert')
+          return out
+        })()
+      : shuffle(TILE_POOL, random)
+    const hexes = coords.map(({ q, r }, i) => ({ q, r, resource: resources[i], number: null } as Hex))
+
+    if (settings.standardNumbers) {
+      let n = 0
+      for (const i of standardNumberSpiral()) {
+        if (hexes[i].resource !== 'desert') hexes[i].number = STANDARD_NUMBER_ORDER[n++]
+      }
+      return hexes
+    }
+
     const numbers = shuffle(NUMBER_POOL, random)
     let n = 0
-    const hexes = hexCoords().map(({ q, r }, i) => ({
-      q,
-      r,
-      resource: resources[i],
-      number: resources[i] === 'desert' ? null : numbers[n++],
-    }))
+    for (const hex of hexes) {
+      if (hex.resource !== 'desert') hex.number = numbers[n++]
+    }
     if (noAdjacentReds(hexes)) return hexes
   }
 }
@@ -441,8 +511,12 @@ export interface Board {
   harbours: Harbour[]
 }
 
-export function generateFullBoard(random: () => number = Math.random): Board {
-  const hexes = generateBoard(random)
-  const frame = randomFrame(random)
+export function generateFullBoard(
+  random: () => number = Math.random,
+  options: Partial<BoardOptions> = {},
+): Board {
+  const settings = { ...DEFAULT_BOARD_OPTIONS, ...options }
+  const hexes = generateBoard(random, settings)
+  const frame = settings.standardHarbours ? standardFrame() : randomFrame(random)
   return { hexes, frame, harbours: harboursFor(frame) }
 }

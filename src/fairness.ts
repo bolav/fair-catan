@@ -73,6 +73,14 @@ export const BALANCE_LABELS: Record<BalanceKey, string> = {
 }
 
 export type Balance = Record<BalanceKey, number>
+export type BalanceWeights = Record<BalanceKey, number>
+
+export const DEFAULT_BALANCE_WEIGHTS: BalanceWeights = {
+  resourceProbabilityDistribution: 1,
+  rollNumberClustering: 1,
+  resourceClustering: 1,
+  harbourReturnBalance: 1,
+}
 
 /** Pips a resource "should" receive: its tile count's share of the 58 pips. */
 export function expectedPips(tileCount: number): number {
@@ -182,10 +190,26 @@ export function fairnessMeasure(totals: readonly number[]): number {
   return Math.min(1, Math.max(0, spread / FAIRNESS_SPREAD_DIVISOR))
 }
 
-export function cibiPlus(balance: Balance, fairness: number): number {
+export function weightedBalanceMean(
+  balance: Balance,
+  weights: Partial<BalanceWeights> = {},
+): number {
   const keys = Object.keys(NORMALIZERS) as BalanceKey[]
-  const mean = keys.reduce((sum, k) => sum + balance[k], 0) / keys.length
-  return (mean + fairness) / 2
+  const resolved = { ...DEFAULT_BALANCE_WEIGHTS, ...weights }
+  const totalWeight = keys.reduce((sum, key) => sum + Math.max(0, resolved[key]), 0)
+  if (totalWeight === 0) return 0
+  return keys.reduce(
+    (sum, key) => sum + balance[key] * Math.max(0, resolved[key]),
+    0,
+  ) / totalWeight
+}
+
+export function cibiPlus(
+  balance: Balance,
+  fairness: number,
+  weights: Partial<BalanceWeights> = {},
+): number {
+  return (weightedBalanceMean(balance, weights) + fairness) / 2
 }
 
 export interface BoardEvaluation {
@@ -193,26 +217,34 @@ export interface BoardEvaluation {
   draft: DraftResult
   raw: Balance
   balance: Balance
+  /** Weighted mean of the four board-balance measures. */
+  balanceMean: number
   fairness: number
   /** Raw point spread between the best and worst starting position. */
   spread: number
   cibiPlus: number
 }
 
-export function evaluateBoard(board: Board, tuning?: Partial<Tuning>): BoardEvaluation {
+export function evaluateBoard(
+  board: Board,
+  tuning?: Partial<Tuning>,
+  weights?: Partial<BalanceWeights>,
+): BoardEvaluation {
   const geom = geometry()
   const index = buildScoringIndex(board, tuning)
   const draft = runDraft(index)
   const raw = rawBalance(board, geom)
   const balance = normalizeBalance(raw)
+  const balanceMean = weightedBalanceMean(balance, weights)
   const fairness = fairnessMeasure(draft.totals)
   return {
     board,
     draft,
     raw,
     balance,
+    balanceMean,
     fairness,
     spread: Math.max(...draft.totals) - Math.min(...draft.totals),
-    cibiPlus: cibiPlus(balance, fairness),
+    cibiPlus: cibiPlus(balance, fairness, weights),
   }
 }

@@ -106,6 +106,18 @@ describe('cibiPlus', () => {
       expect(evaluation.cibiPlus).toBeCloseTo((mean + evaluation.fairness) / 2, 10)
     }
   })
+
+  it('can give one board-balance measure more influence', () => {
+    const balance = {
+      resourceProbabilityDistribution: 0.8,
+      rollNumberClustering: 0.1,
+      resourceClustering: 0.1,
+      harbourReturnBalance: 0.1,
+    }
+    const equal = cibiPlus(balance, 0.2)
+    const weighted = cibiPlus(balance, 0.2, { resourceProbabilityDistribution: 5 })
+    expect(weighted).toBeGreaterThan(equal)
+  })
 })
 
 describe('sweep', () => {

@@ -1,8 +1,7 @@
 // Board codes: the short shareable string for a board.
 //
-// A board is entirely determined by its 32-bit board seed — tiles, numbers and
-// frame arrangement all come out of it — so the code is just that number in
-// base 32, plus one check character.
+// A board is determined by its 32-bit seed and three setup-lock bits. Those 35
+// bits fit exactly in seven base-32 characters, followed by one check character.
 //
 // Crockford's base 32 alphabet, not base 36: it leaves out I, L, O and U, so
 // the reader-friendly foldings (O to zero, I and L to one) can be applied on
@@ -13,10 +12,13 @@
 // character silently produces a *different valid board*, which is the worst
 // possible failure for something people read aloud across a table.
 
+import { DEFAULT_BOARD_OPTIONS, type BoardOptions } from './board'
+
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ' // 32 symbols, no I L O U
 const BASE = ALPHABET.length
-const BODY = 7 // 7 x 5 bits = 35, enough for any 32-bit seed
+const BODY = 7 // 7 x 5 bits = 35: 32-bit seed + 3 board-option bits
 const GROUP = 4
+const SEED_RANGE = 0x100000000
 
 /** Folded on input, so a code can be read aloud without ceremony. */
 const CONFUSABLE: Record<string, string> = { O: '0', I: '1', L: '1' }
@@ -30,8 +32,17 @@ function checkChar(body: string): string {
   return ALPHABET[sum % BASE]
 }
 
-export function encodeBoardCode(seed: number): string {
-  let value = seed >>> 0
+function optionBits(options: Partial<BoardOptions>): number {
+  return (
+    (options.desertCenter ? 1 : 0) |
+    (options.standardHarbours ? 2 : 0) |
+    (options.standardNumbers ? 4 : 0)
+  )
+}
+
+export function encodeBoardCode(seed: number, options: Partial<BoardOptions> = {}): string {
+  const settings = { ...DEFAULT_BOARD_OPTIONS, ...options }
+  let value = (seed >>> 0) + optionBits(settings) * SEED_RANGE
   let body = ''
   for (let i = 0; i < BODY; i++) {
     body = ALPHABET[value % BASE] + body
@@ -45,7 +56,12 @@ export function encodeBoardCode(seed: number): string {
  * The inverse. Returns null for anything that is not a well-formed code, so
  * callers can tell "not a code yet" from "a code for some other board".
  */
-export function decodeBoardCode(code: string): number | null {
+export interface DecodedBoardCode {
+  seed: number
+  boardOptions: BoardOptions
+}
+
+export function decodeBoardSpec(code: string): DecodedBoardCode | null {
   const cleaned = code
     .toUpperCase()
     .replace(/[\s-]/g, '')
@@ -65,6 +81,19 @@ export function decodeBoardCode(code: string): number | null {
   for (const c of body) {
     seed = seed * BASE + ALPHABET.indexOf(c)
   }
-  if (seed < 0 || seed > 0xffffffff) return null
-  return seed >>> 0
+  if (seed < 0 || seed >= SEED_RANGE * 8) return null
+  const bits = Math.floor(seed / SEED_RANGE)
+  return {
+    seed: (seed % SEED_RANGE) >>> 0,
+    boardOptions: {
+      desertCenter: Boolean(bits & 1),
+      standardHarbours: Boolean(bits & 2),
+      standardNumbers: Boolean(bits & 4),
+    },
+  }
+}
+
+/** Backwards-compatible seed-only decoder for callers that do not need locks. */
+export function decodeBoardCode(code: string): number | null {
+  return decodeBoardSpec(code)?.seed ?? null
 }

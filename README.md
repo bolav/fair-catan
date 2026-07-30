@@ -64,9 +64,11 @@ The four `node scripts/…` ones need a dev server running.
 | `src/tools/*` | `calibrate`, `maximise`, `geometry-check`, `render-check` |
 | `tests/board.spec.ts` | Playwright checks on the running app |
 
-A board is entirely determined by one 32-bit seed, which is what makes board
-codes possible. Throughput is ~3,300 fully simulated boards/s per core, so a
-100k sweep takes about 30s in the worker.
+A board is determined by one 32-bit seed plus three optional setup locks:
+desert in the centre, standard harbour order, and standard A–R number-token
+order. Board codes carry both the seed and those lock bits. Throughput is
+~3,300 fully simulated boards/s per core, so a 100k sweep takes about 30s in
+the worker.
 
 `tests/board.spec.ts` drives the app in Chromium, so the layout is checked
 rather than assumed: harbour markers clear of the terrain names, frame letters

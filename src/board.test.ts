@@ -13,6 +13,8 @@ import {
   NUMBER_POOL,
   pieceEdgeSlot,
   standardFrame,
+  STANDARD_NUMBER_ORDER,
+  standardNumberSpiral,
   TILE_POOL,
   TOTAL_PIPS,
 } from './board'
@@ -55,6 +57,31 @@ describe('generateBoard', () => {
     const b = generateFullBoard(makeRng(12345))
     expect(b).toEqual(a)
     expect(generateFullBoard(makeRng(12346))).not.toEqual(a)
+  })
+
+  it('can lock the desert to the centre', () => {
+    for (let i = 0; i < 20; i++) {
+      const board = generateBoard(makeRng(i), { desertCenter: true })
+      expect(board.find((hex) => hex.resource === 'desert')).toMatchObject({ q: 0, r: 0 })
+    }
+  })
+
+  it('can lock number tokens to the standard outside-in order', () => {
+    for (let i = 0; i < 20; i++) {
+      const board = generateBoard(makeRng(i), { standardNumbers: true })
+      const numbers = standardNumberSpiral()
+        .filter((index) => board[index].resource !== 'desert')
+        .map((index) => board[index].number)
+      expect(numbers).toEqual(STANDARD_NUMBER_ORDER)
+      expect(noAdjacentReds(board)).toBe(true)
+    }
+  })
+
+  it('can lock harbours to the standard frame order', () => {
+    for (let i = 0; i < 10; i++) {
+      const board = generateFullBoard(makeRng(i), { standardHarbours: true })
+      expect(board.frame.map((piece) => piece.id)).toEqual(standardFrame().map((piece) => piece.id))
+    }
   })
 })
 
@@ -101,6 +128,20 @@ describe('geometry', () => {
 })
 
 describe('the sea frame', () => {
+  it('maps each physical frame letter to its printed harbour or harbours', () => {
+    const kindsByPiece = Object.fromEntries(
+      FRAME_PIECES.map((piece) => [piece.id, piece.harbours.map((harbour) => harbour.kind)]),
+    )
+    expect(kindsByPiece).toEqual({
+      A: ['ore'],
+      B: ['generic', 'wheat'],
+      C: ['generic', 'sheep'],
+      D: ['generic'],
+      E: ['generic', 'brick'],
+      F: ['wood'],
+    })
+  })
+
   it('offers 120 distinct arrangements of the 6 pieces', () => {
     const arrangements = frameArrangements()
     expect(arrangements).toHaveLength(120)
@@ -115,6 +156,12 @@ describe('the sea frame', () => {
     expect(harbours).toHaveLength(9)
     const kinds = harbours.map((h) => h.kind).sort()
     expect(kinds).toEqual(['brick', 'generic', 'generic', 'generic', 'generic', 'ore', 'sheep', 'wheat', 'wood'])
+  })
+
+  it('uses the physical default piece sequence counter-clockwise', () => {
+    const clockwise = standardFrame().map((piece) => piece.id)
+    expect(clockwise).toEqual(['C', 'D', 'E', 'F', 'B', 'A'])
+    expect([clockwise[0], ...clockwise.slice(1).reverse()]).toEqual(['C', 'A', 'B', 'F', 'E', 'D'])
   })
 
   it('reproduces the classic 3-4-3 harbour gaps for the alternating order', () => {

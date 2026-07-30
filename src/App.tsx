@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { hashSeed } from './board'
-import { decodeBoardCode, encodeBoardCode } from './code'
+import { DEFAULT_BOARD_OPTIONS, hashSeed, type BoardOptions } from './board'
+import { decodeBoardSpec, encodeBoardCode } from './code'
+import {
+  DEFAULT_BALANCE_WEIGHTS,
+  type BalanceWeights,
+} from './fairness'
 import { evaluateSeed, type SweepMode, type SweepResult } from './generate'
-import { DEFAULT_TUNING, type Tuning } from './scoring'
+import { buildScoringIndex, DEFAULT_TUNING, type Tuning } from './scoring'
 import type { SweepMessage, SweepRequest } from './worker/sweep.worker'
 import { BoardView } from './ui/BoardView'
+import { BalanceWeightsPanel } from './ui/BalanceWeightsPanel'
 import { BUTTON_LABELS, CopyButton } from './ui/CopyButton'
 import { CibiPanel } from './ui/CibiPanel'
 import { PlayerPanel } from './ui/PlayerPanel'
@@ -25,12 +30,22 @@ interface Layers {
   settlements: boolean
   roads: boolean
   cards: boolean
+  intersectionNumbers: boolean
+  intersectionValues: boolean
 }
 
 const LAYER_LABELS: Array<{ key: keyof Layers; label: string }> = [
   { key: 'settlements', label: 'Settlements' },
   { key: 'roads', label: 'Roads' },
   { key: 'cards', label: 'Opening cards' },
+  { key: 'intersectionNumbers', label: 'Intersection numbers' },
+  { key: 'intersectionValues', label: 'Intersection values' },
+]
+
+const BOARD_OPTION_LABELS: Array<{ key: keyof BoardOptions; label: string }> = [
+  { key: 'desertCenter', label: 'Desert in the middle' },
+  { key: 'standardHarbours', label: 'Default harbours' },
+  { key: 'standardNumbers', label: 'Default number order' },
 ]
 
 interface Shown {
@@ -43,13 +58,23 @@ export default function App() {
   const [boards, setBoards] = useState(DEFAULT_BOARDS)
   const [mode, setMode] = useState<SweepMode>('best')
   const [theme, setTheme] = useState<Theme>('system')
-  const [layers, setLayers] = useState<Layers>({ settlements: true, roads: true, cards: true })
+  const [layers, setLayers] = useState<Layers>({
+    settlements: true,
+    roads: true,
+    cards: true,
+    intersectionNumbers: false,
+    intersectionValues: false,
+  })
+  const [boardOptions, setBoardOptions] = useState<BoardOptions>({ ...DEFAULT_BOARD_OPTIONS })
   const [running, setRunning] = useState(false)
   const [progress, setProgress] = useState(0)
   const [tuning, setTuning] = useState<Tuning>(() => ({
     values: { ...DEFAULT_TUNING.values },
     robberTax: DEFAULT_TUNING.robberTax,
   }))
+  const [balanceWeights, setBalanceWeights] = useState<BalanceWeights>({
+    ...DEFAULT_BALANCE_WEIGHTS,
+  })
   const [shown, setShown] = useState<Shown>(() => ({ boardSeed: hashSeed(DEFAULT_SEED) }))
   const [codeInput, setCodeInput] = useState('')
   const [codeError, setCodeError] = useState(false)
@@ -59,10 +84,14 @@ export default function App() {
   // the evaluation is derived rather than stored — moving a slider re-scores
   // the board on the spot, and there is no way for the two to drift apart.
   const evaluation = useMemo(
-    () => evaluateSeed(shown.boardSeed, tuning),
-    [shown.boardSeed, tuning],
+    () => evaluateSeed(shown.boardSeed, tuning, boardOptions, balanceWeights),
+    [shown.boardSeed, tuning, boardOptions, balanceWeights],
   )
-  const boardCode = encodeBoardCode(shown.boardSeed)
+  const locationScores = useMemo(
+    () => buildScoringIndex(evaluation.board, tuning).locationScores,
+    [evaluation.board, tuning],
+  )
+  const boardCode = encodeBoardCode(shown.boardSeed, boardOptions)
 
   const workerRef = useRef<Worker | null>(null)
 
@@ -85,12 +114,13 @@ export default function App() {
   }, [])
 
   const loadCode = useCallback(() => {
-    const seed = decodeBoardCode(codeInput)
-    if (seed === null) {
+    const decoded = decodeBoardSpec(codeInput)
+    if (decoded === null) {
       setCodeError(true)
       return
     }
-    setShown({ boardSeed: seed })
+    setBoardOptions(decoded.boardOptions)
+    setShown({ boardSeed: decoded.seed })
     setCodeError(false)
   }, [codeInput])
 
@@ -118,9 +148,16 @@ export default function App() {
       workerRef.current = null
     }
 
-    const request: SweepRequest = { seed: hashSeed(seedText), boards, mode, tuning }
+    const request: SweepRequest = {
+      seed: hashSeed(seedText),
+      boards,
+      mode,
+      tuning,
+      boardOptions,
+      balanceWeights,
+    }
     worker.postMessage(request)
-  }, [seedText, boards, mode, tuning])
+  }, [seedText, boards, mode, tuning, boardOptions, balanceWeights])
 
   const stop = useCallback(() => {
     workerRef.current?.terminate()
@@ -226,6 +263,22 @@ export default function App() {
             </label>
           ))}
         </fieldset>
+        <fieldset className="layers">
+          <legend>Lock</legend>
+          {BOARD_OPTION_LABELS.map(({ key, label }) => (
+            <label key={key}>
+              <input
+                type="checkbox"
+                checked={boardOptions[key]}
+                disabled={running}
+                onChange={(e) =>
+                  setBoardOptions((options) => ({ ...options, [key]: e.target.checked }))
+                }
+              />
+              {label}
+            </label>
+          ))}
+        </fieldset>
         {running && (
           <div className="progress">
             <div className="progress-track">
@@ -258,7 +311,10 @@ export default function App() {
                 settlements: layers.settlements,
                 roads: layers.roads,
                 payout: layers.cards,
+                intersectionNumbers: layers.intersectionNumbers,
+                intersectionValues: layers.intersectionValues,
               }}
+              locationScores={locationScores}
             />
             <div className="legend">
               {(layers.settlements || layers.roads) &&
@@ -284,11 +340,17 @@ export default function App() {
         </div>
         <div>
           <CibiPanel evaluation={evaluation} />
+          <BalanceWeightsPanel
+            weights={balanceWeights}
+            onChange={setBalanceWeights}
+            disabled={running}
+          />
           <TuningPanel tuning={tuning} onChange={setTuning} disabled={running} />
           <SetupSheet
             board={evaluation.board}
             draft={evaluation.draft}
             seed={boardSeed}
+            boardOptions={boardOptions}
             show={layers}
           />
         </div>

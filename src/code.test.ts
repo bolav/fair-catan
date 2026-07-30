@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decodeBoardCode, encodeBoardCode } from './code'
+import { decodeBoardCode, decodeBoardSpec, encodeBoardCode } from './code'
 
 const SEEDS = [0, 1, 42, 1619994804, 0x7fffffff, 0xfffffffe, 0xffffffff]
 
@@ -20,6 +20,15 @@ describe('board codes', () => {
       const code = encodeBoardCode(seed)
       expect(code).toMatch(/^[0-9A-Z]{4}-[0-9A-Z]{4}$/)
     }
+  })
+
+  it('round-trips the three board locks in the same code', () => {
+    const boardOptions = {
+      desertCenter: true,
+      standardHarbours: true,
+      standardNumbers: true,
+    }
+    expect(decodeBoardSpec(encodeBoardCode(42, boardOptions))).toEqual({ seed: 42, boardOptions })
   })
 
   it('reads back regardless of case, spacing or punctuation', () => {

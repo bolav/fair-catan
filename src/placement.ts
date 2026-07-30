@@ -149,6 +149,24 @@ export function openingCards(index: ScoringIndex, node: number): ProducingResour
   return cards.sort()
 }
 
+/**
+ * Compare two settlements as setup-card sources.
+ *
+ * Card count comes first: setup cards are guaranteed inventory, independent of
+ * the numbers printed on their hexes. Resource values break equal-card ties so
+ * that, for example, wheat/ore is preferred to wood/sheep.
+ */
+function openingHandRank(index: ScoringIndex, node: number): [number, number] {
+  const cards = openingCards(index, node)
+  return [cards.length, cards.reduce((sum, resource) => sum + index.values[resource], 0)]
+}
+
+function betterOpeningHand(index: ScoringIndex, candidate: number, current: number): boolean {
+  const a = openingHandRank(index, candidate)
+  const b = openingHandRank(index, current)
+  return a[0] > b[0] || (a[0] === b[0] && a[1] > b[1] + 1e-12)
+}
+
 export function runDraft(index: ScoringIndex): DraftResult {
   const nodeCount = index.geom.nodes.length
   const occupied = new Array<boolean>(nodeCount).fill(false)
@@ -157,7 +175,7 @@ export function runDraft(index: ScoringIndex): DraftResult {
   const roads: Road[] = []
   const edges = edgeLookup(index)
 
-  DRAFT_ORDER.forEach((player, pick) => {
+  const bestNodeFor = (player: number): number => {
     const owned = settlements[player]
     const before = owned.length === 0 ? 0 : playerScore(index, owned).total
 
@@ -172,14 +190,44 @@ export function runDraft(index: ScoringIndex): DraftResult {
         bestNode = node
       }
     }
+    return bestNode
+  }
 
+  const place = (player: number, pick: number, bestNode: number) => {
+    const owned = settlements[player]
+    const before = owned.length === 0 ? 0 : playerScore(index, owned).total
+    const bestMarginal = playerScore(index, [...owned, bestNode]).total - before
     occupied[bestNode] = true
     owned.push(bestNode)
     placements.push({ pick, player, node: bestNode, marginal: bestMarginal })
     // The road goes down with the settlement, so it only sees the board as it
     // stands at this pick.
     roads.push(chooseRoad(index, edges, occupied, pick, player, bestNode))
-  })
+  }
+
+  for (let pick = 0; pick < DRAFT_ORDER.length; pick++) {
+    const player = DRAFT_ORDER[pick]
+
+    if (DRAFT_ORDER[pick + 1] === player) {
+      // Choose the same greedy two-settlement package as before, but treat the
+      // back-to-back picks as one turn when deciding their order. Only the
+      // second settlement pays setup cards, so put the better payout there.
+      const first = bestNodeFor(player)
+      occupied[first] = true
+      settlements[player].push(first)
+      const second = bestNodeFor(player)
+      occupied[first] = false
+      settlements[player].pop()
+
+      const reverse = betterOpeningHand(index, first, second)
+      place(player, pick, reverse ? second : first)
+      place(player, pick + 1, reverse ? first : second)
+      pick++
+      continue
+    }
+
+    place(player, pick, bestNodeFor(player))
+  }
 
   // By the rules the second settlement is the one that pays out at setup.
   const openingHands: OpeningHand[] = settlements.map((owned, player) => ({

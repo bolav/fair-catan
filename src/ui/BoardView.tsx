@@ -162,17 +162,26 @@ export interface ShowLayers {
   roads: boolean
   /** The ring marking the settlement that deals cards at setup. */
   payout: boolean
+  intersectionNumbers: boolean
+  intersectionValues: boolean
 }
 
-export const SHOW_ALL: ShowLayers = { settlements: true, roads: true, payout: true }
+export const SHOW_ALL: ShowLayers = {
+  settlements: true,
+  roads: true,
+  payout: true,
+  intersectionNumbers: false,
+  intersectionValues: false,
+}
 
 export interface BoardViewProps {
   board: Board
   draft: DraftResult
   show?: ShowLayers
+  locationScores?: readonly number[]
 }
 
-export function BoardView({ board, draft, show = SHOW_ALL }: BoardViewProps) {
+export function BoardView({ board, draft, show = SHOW_ALL, locationScores }: BoardViewProps) {
   const geom = geometry()
 
   const ringNodes = geom.coastalRingNodes.map((id) => geom.nodes[id])
@@ -350,6 +359,46 @@ export function BoardView({ board, draft, show = SHOW_ALL }: BoardViewProps) {
           </g>
         )
       })}
+
+      {/* Optional labels for the 54 settlement intersections. */}
+      {(show.intersectionNumbers || show.intersectionValues) &&
+        geom.nodes.map((node) => {
+          const at = scale(node)
+          const number = show.intersectionNumbers ? `#${node.id + 1}` : ''
+          const value =
+            show.intersectionValues && locationScores
+              ? locationScores[node.id].toFixed(1)
+              : ''
+          const label = [number, value].filter(Boolean).join(' · ')
+          const width = Math.max(20, label.length * 5.5 + 8)
+          return (
+            <g key={`intersection-${node.id}`} data-role="intersection-label">
+              <rect
+                x={at.x - width / 2}
+                y={at.y - 7}
+                width={width}
+                height={14}
+                rx={5}
+                fill="var(--surface-1)"
+                stroke="var(--baseline)"
+                strokeWidth={1}
+                opacity={0.92}
+              />
+              <text
+                x={at.x}
+                y={at.y}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={8}
+                fontWeight={600}
+                fill="var(--text-primary)"
+              >
+                {label}
+                <title>{`Intersection ${node.id + 1}${value ? ` — value ${value}` : ''}`}</title>
+              </text>
+            </g>
+          )
+        })}
 
       {/* Harbours, drawn in the sea band with a dock line to each usable corner. */}
       {board.harbours.map((harbour) => {

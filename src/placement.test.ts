@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { generateFullBoard, geometry, makeRng } from './board'
+import { decodeBoardCode } from './code'
+import { boardFromSeed } from './generate'
 import { buildScoringIndex, playerScore } from './scoring'
 import { DRAFT_ORDER, PLAYER_COUNT, runDraft } from './placement'
 
@@ -50,12 +52,11 @@ describe('runDraft', () => {
     }
   })
 
-  it('takes a first settlement worth more than the second, before the robber tax', () => {
-    // The greedy rule means pick 1 is the best location on an empty board.
+  it('takes the best available settlement for each non-consecutive first-round pick', () => {
     const index = buildScoringIndex(boards[0])
     const draft = runDraft(index)
-    const firstRound = draft.placements.slice(0, 4).map((p) => p.marginal)
-    expect(firstRound).toEqual([...firstRound].sort((a, b) => b - a))
+    const firstThree = draft.placements.slice(0, 3).map((p) => p.marginal)
+    expect(firstThree).toEqual([...firstThree].sort((a, b) => b - a))
   })
 })
 
@@ -154,6 +155,16 @@ describe('opening hands', () => {
       expect(hand.node).toBe(second)
       expect(hand.node).not.toBe(first)
     })
+  })
+
+  it('orders Player 4’s consecutive picks for the better setup hand', () => {
+    const seed = decodeBoardCode('1ZP7-CVS6')
+    expect(seed).not.toBeNull()
+    const draft = runDraft(buildScoringIndex(boardFromSeed(seed!)))
+
+    expect(draft.placements[3].node).toBe(11)
+    expect(draft.placements[4].node).toBe(7)
+    expect(draft.openingHands[3].cards).toEqual(['brick', 'ore', 'wheat'])
   })
 })
 
